@@ -31,7 +31,15 @@ class OrderController extends Controller
             'size' => 'required|string'
         ]);
 
-        $product = Product::find($request->network_id);
+        $user = auth()->user();
+        
+        // Determine product type based on user role
+        $productType = $user->role === 'customer' ? 'customer_product' : 'agent_product';
+        
+        $product = Product::where('id', $request->network_id)
+            ->where('product_type', $productType)
+            ->first();
+            
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
         }

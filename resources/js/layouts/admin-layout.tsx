@@ -6,6 +6,7 @@ import { PanelLeft, LogOut, Settings } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import { icons } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type IconName = keyof typeof icons;
 
@@ -110,6 +111,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, user, header
             <div className="text-sm text-muted-foreground hidden sm:block">
               {user.name}
             </div>
+            <ThemeToggle />
             <Link href={route('profile.edit')} className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors">
               <Icon name="Settings" className="h-4 w-4" />
             </Link>

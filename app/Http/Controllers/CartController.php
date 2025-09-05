@@ -23,8 +23,13 @@ class CartController extends Controller
                 'beneficiary_number' => 'required|string|max:20',
             ]);
             
-            // Find the product by network
-            $product = Product::where('network', $request->network)->first();
+            // Determine product type based on user role
+            $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+            
+            // Find the product by network and product type
+            $product = Product::where('network', $request->network)
+                ->where('product_type', $productType)
+                ->first();
             
             if (!$product) {
                 return response()->json(['success' => false, 'message' => 'Product not found'], 400);
@@ -155,14 +160,19 @@ class CartController extends Controller
             
             $data = [$csvData]; // Wrap in array to match Excel format
             
-            // Find the product by network
-            $product = Product::where('network', $request->network)->first();
+            $user = Auth::user();
+            
+            // Determine product type based on user role
+            $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+            
+            // Find the product by network and product type
+            $product = Product::where('network', $request->network)
+                ->where('product_type', $productType)
+                ->first();
             
             if (!$product) {
                 return response()->json(['success' => false, 'message' => 'Product not found'], 400);
             }
-            
-            $user = Auth::user();
             $addedCount = 0;
             $phoneNumbers = [];
             $duplicates = [];
@@ -262,21 +272,36 @@ class CartController extends Controller
     
     public function processBulkToCart(Request $request)
     {
+        Log::info('Bulk order processing started', ['request' => $request->all()]);
+        
         $request->validate([
             'numbers' => 'required|string',
             'network' => 'required|string'
         ]);
         
         try {
-            // Find the product by network
-            $product = Product::where('network', $request->network)->first();
+            $user = Auth::user();
+            Log::info('User authenticated', ['user_id' => $user->id, 'role' => $user->role]);
+            
+            // Determine product type based on user role
+            $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+            Log::info('Product type determined', ['product_type' => $productType]);
+            
+            // Find the product by network and product type
+            $product = Product::where('network', $request->network)
+                ->where('product_type', $productType)
+                ->first();
+            
+            Log::info('Product search result', ['product_found' => $product ? true : false, 'network' => $request->network, 'product_type' => $productType]);
             
             if (!$product) {
+                Log::error('Product not found', ['network' => $request->network, 'product_type' => $productType]);
                 return response()->json(['success' => false, 'message' => 'Product not found'], 400);
             }
             
             $lines = explode("\n", trim($request->numbers));
-            $user = Auth::user();
+            Log::info('Processing lines', ['lines' => $lines]);
+            
             $addedCount = 0;
             $phoneNumbers = [];
             $duplicates = [];
@@ -284,38 +309,55 @@ class CartController extends Controller
             
             foreach ($lines as $line) {
                 $parts = preg_split('/\s+/', trim($line));
+                Log::info('Processing line', ['line' => $line, 'parts' => $parts]);
                 
                 if (count($parts) >= 2) {
                     $phoneNumber = trim($parts[0]);
                     $bundleSize = trim($parts[1]);
                     
+                    Log::info('Parsed data', ['phone' => $phoneNumber, 'bundle' => $bundleSize]);
+                    
                     // Check for duplicates
                     if (in_array($phoneNumber, $phoneNumbers)) {
                         $duplicates[] = $phoneNumber;
+                        Log::info('Duplicate phone number found', ['phone' => $phoneNumber]);
                         continue;
                     }
                     $phoneNumbers[] = $phoneNumber;
                     
                     // Validate phone number format
+                    Log::info('Validating phone number', ['phone' => $phoneNumber, 'length' => strlen($phoneNumber)]);
                     if (preg_match('/^\d{10}$/', $phoneNumber)) {
+                        Log::info('Phone number validation passed', ['phone' => $phoneNumber]);
                         // Find the variant by size
-                        $sizeKey = strtolower($bundleSize) . 'gb';
+                        $sizeKey = strtoupper($bundleSize) . 'GB';
+                        Log::info('Looking for variant', ['size_key' => $sizeKey]);
+                        
                         $variant = $product->variants()
                             ->whereJsonContains('variant_attributes->size', $sizeKey)
                             ->where('status', 'IN STOCK')
                             ->first();
                             
+                        Log::info('Variant search result', ['variant_found' => $variant ? true : false, 'size_key' => $sizeKey]);
+                            
                         if ($variant) {
-                            Cart::create([
-                                'user_id' => $user->id,
-                                'product_id' => $product->id,
-                                'product_variant_id' => $variant->id,
-                                'quantity' => 1,
-                                'beneficiary_number' => $phoneNumber,
-                                'network' => $request->network,
-                                'price' => $variant->price
-                            ]);
-                            $addedCount++;
+                            Log::info('Found variant', ['variant_id' => $variant->id, 'price' => $variant->price]);
+                            
+                            try {
+                                Cart::create([
+                                    'user_id' => $user->id,
+                                    'product_id' => $product->id,
+                                    'product_variant_id' => $variant->id,
+                                    'quantity' => 1,
+                                    'beneficiary_number' => $phoneNumber,
+                                    'network' => $request->network,
+                                    'price' => $variant->price
+                                ]);
+                                $addedCount++;
+                                Log::info('Successfully added to cart', ['phone' => $phoneNumber, 'bundle' => $bundleSize]);
+                            } catch (\Exception $e) {
+                                Log::error('Failed to add to cart', ['phone' => $phoneNumber, 'error' => $e->getMessage()]);
+                            }
                         } else {
                             $unavailableVariants[] = "$phoneNumber ({$bundleSize}GB)";
                         }

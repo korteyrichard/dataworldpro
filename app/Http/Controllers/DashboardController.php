@@ -236,7 +236,14 @@ class DashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Network is required']);
         }
         
-        $product = Product::where('network', $network)->first();
+        $user = auth()->user();
+        
+        // Determine product type based on user role
+        $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+        
+        $product = Product::where('network', $network)
+            ->where('product_type', $productType)
+            ->first();
         
         if (!$product) {
             return response()->json(['success' => false, 'message' => 'Product not found']);

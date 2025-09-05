@@ -32,6 +32,18 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
+    // Get existing token (requires web auth)
+    Route::middleware('auth:web')->get('/get-token', function (Request $request) {
+        $user = $request->user();
+        $token = $user->tokens()->where('name', 'api-token')->first();
+        
+        if ($token) {
+            return response()->json(['token' => $token->token]);
+        }
+        
+        return response()->json(['token' => null]);
+    });
+
     // 🔒 All routes inside here require Sanctum token
     Route::middleware('auth:sanctum')->group(function () {
         // ORDERS
@@ -48,10 +60,27 @@ Route::prefix('v1')->group(function () {
         // TRANSACTIONS
         Route::get('/transaction-status', [TransactionController::class, 'index']);
 
-        // Example: logout route
+        // Logout route - revoke current token
         Route::post('/logout', function (Request $request) {
             $request->user()->currentAccessToken()->delete();
-            return response()->json(['message' => 'Logged out']);
+            return response()->json(['message' => 'Logged out successfully']);
+        });
+        
+        // Logout all devices - revoke all tokens
+        Route::post('/logout-all', function (Request $request) {
+            $user = $request->user();
+            $deletedCount = $user->tokens()->count();
+            $user->tokens()->delete();
+            
+            \Illuminate\Support\Facades\Log::info('Logout all tokens', [
+                'user_id' => $user->id,
+                'tokens_deleted' => $deletedCount
+            ]);
+            
+            return response()->json([
+                'message' => 'Logged out from all devices',
+                'tokens_deleted' => $deletedCount
+            ]);
         });
     });
     

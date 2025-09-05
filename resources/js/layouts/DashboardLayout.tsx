@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { icons } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface DashboardLayoutProps extends PropsWithChildren {
     user: {
@@ -44,6 +45,7 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
         { name: 'Orders', href: route('dashboard.orders'), icon: 'Package', current: route().current('dashboard.orders') },
         { name: 'Afa', href: route('dashboard.afa'), icon: 'Receipt', current: route().current('dashboard.afa') },
         { name: 'Transactions', href: route('dashboard.transactions'), icon: 'Receipt', current: route().current('dashboard.transactions') },
+        ...(user.role === 'agent' || user.role === 'admin' ? [{ name: 'API Docs', href: route('dashboard.api-docs'), icon: 'Code' as IconName, current: route().current('dashboard.api-docs') }] : []),
         { name: 'Settings', href: route('profile.edit'), icon: 'Settings', current: route().current('profile.edit') || route().current('password.edit') || route().current('appearance') },
     ];
 
@@ -146,7 +148,8 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
                                 </h2>
                             )}
                         </div>
-                        <div className="ml-4 flex items-center md:ml-6">
+                        <div className="ml-4 flex items-center md:ml-6 space-x-2">
+                            <ThemeToggle />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">

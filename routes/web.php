@@ -12,6 +12,7 @@ use App\Http\Controllers\TransactionsController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AFAController;
+use App\Http\Controllers\ApiDocsController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -34,6 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard/transactions', [TransactionsController::class, 'index'])->name('dashboard.transactions');
     Route::get('/dashboard/afa-registration', [AFAController::class, 'index'])->name('dashboard.afa');
     Route::get('/dashboard/afa-orders', [AFAController::class, 'afaOrders'])->name('dashboard.afa.orders');
+    Route::get('/dashboard/api-docs', [ApiDocsController::class, 'index'])->name('dashboard.api-docs');
 
     // Cart routes
     Route::post('/add-to-cart', [CartController::class, 'store'])->name('add.to.cart');

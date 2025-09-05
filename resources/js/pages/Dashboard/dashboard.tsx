@@ -15,6 +15,15 @@ interface Order {
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | string;
 }
 
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  network: string;
+  expiry: string;
+  product_type: 'customer_products' | 'agent_product';
+}
+
 interface CartItem {
   id: number;
   product_id: number;
@@ -37,10 +46,11 @@ interface DashboardProps extends PageProps {
   todaySales: number;
   pendingOrders: number;
   processingOrders: number;
+  products: Product[];
 }
 
 export default function Dashboard({ auth }: DashboardProps) {
-  const { cartCount, cartItems, walletBalance: initialWalletBalance, orders, totalSales, todaySales, pendingOrders, processingOrders } = usePage<DashboardProps>().props;
+  const { cartCount, cartItems, walletBalance: initialWalletBalance, orders, totalSales, todaySales, pendingOrders, processingOrders, products } = usePage<DashboardProps>().props;
 
   const [walletBalance, setWalletBalance] = useState(initialWalletBalance ?? 0);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -59,6 +69,16 @@ export default function Dashboard({ auth }: DashboardProps) {
   const [availableSizes, setAvailableSizes] = useState<Array<{value: string, label: string, price: number}>>([]);
   const [loadingSizes, setLoadingSizes] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Filter products based on user role
+  const filteredProducts = products?.filter(product => {
+    if (auth.user.role === 'customer') {
+      return product.product_type === 'customer_products';
+    } else if (auth.user.role === 'agent' || auth.user.role === 'admin') {
+      return product.product_type === 'agent_product';
+    }
+    return false;
+  }) || [];
 
   const networks = [
     { id: 'MTN', name: 'MTN', icon: '📱', color: 'bg-yellow-500' },
@@ -344,11 +364,11 @@ export default function Dashboard({ auth }: DashboardProps) {
           <div className="mb-8 sm:mb-10">
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
               {/* Wallet Balance Card - Featured */}
-              <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+              <div className="col-span-2 lg:col-span-2 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg p-4 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-90">Wallet Balance</p>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center justify-between">
                   <p className="text-xl">GHS {walletBalance}</p>
                   <button
                     className="ml-3 py-2 px-4 hover:bg-opacity-20 transition-colors duration-200 cursor-pointer bg-black rounded-[50%] "
@@ -592,6 +612,8 @@ export default function Dashboard({ auth }: DashboardProps) {
               )}
             </div>
           </div>
+
+         
 
           {/* CART ITEM SECTION....................................................... */}
           {/* CART ITEM SECTION....................................................... */}
