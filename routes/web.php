@@ -87,6 +87,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->name('admin.')->group(fun
     Route::post('admin/orders/export', [\App\Http\Controllers\AdminDashboardController::class, 'exportOrders'])->name('orders.export');
     Route::get('admin/afa-orders', [\App\Http\Controllers\AdminDashboardController::class, 'afaOrders'])->name('afa-orders');
     Route::put('admin/afa-orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateAfaOrderStatus'])->name('afa.orders.updateStatus');
+    Route::post('admin/toggle-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleOrderPusher'])->name('toggle.order.pusher');
 });
 
 // Paystack payment routes

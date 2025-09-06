@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { PageProps, User } from '@/types';
 
@@ -32,6 +32,7 @@ interface AdminDashboardProps extends PageProps {
   todayUsers: User[];
   todayOrders: Order[];
   todayTransactions: Transaction[];
+  orderPusherEnabled: boolean;
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -49,8 +50,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   todayUsers,
   todayOrders,
   todayTransactions,
+  orderPusherEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
+
+  const toggleOrderPusher = () => {
+    router.post('/admin/toggle-order-pusher', {
+      enabled: !orderPusherEnabled
+    });
+  };
 
   return (
     <AdminLayout
@@ -78,6 +86,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <StatCard title="New Users Today" value={todayUsers.length} />
             <StatCard title="Orders Today" value={todayOrders.length} />
             <StatCard title="Transactions Today" value={todayTransactions.length} />
+          </div>
+        </section>
+
+        {/* Order Pusher Control */}
+        <section>
+          <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">System Controls</h3>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 dark:text-white">Order Pusher</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-300">
+                  {orderPusherEnabled ? 'Orders are being pushed to external APIs' : 'Order pushing is disabled'}
+                </p>
+              </div>
+              <button
+                onClick={toggleOrderPusher}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  orderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    orderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </section>
       </div>

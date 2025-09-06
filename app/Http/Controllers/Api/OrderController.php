@@ -8,6 +8,10 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
+use App\Services\OrderPusherService;
+use App\Services\CodeCraftOrderPusherService;
+use Illuminate\Support\Facades\Log;
+use App\Models\Setting;
 
 class OrderController extends Controller
 {
@@ -56,7 +60,7 @@ class OrderController extends Controller
             return response()->json(['error' => 'Insufficient wallet balance'], 400);
         }
 
-        DB::transaction(function() use ($request, $product, $variant) {
+        $order = DB::transaction(function() use ($request, $product, $variant) {
             auth()->user()->decrement('wallet_balance', $variant->price);
             
             $order = Order::create([
@@ -76,6 +80,23 @@ class OrderController extends Controller
 
             return $order;
         });
+        
+        // Push order to external API based on network (if enabled)
+        if (Setting::get('order_pusher_enabled', 1)) {
+            try {
+                if (strtolower($order->network) === 'mtn') {
+                    $mtnOrderPusher = new OrderPusherService();
+                    $mtnOrderPusher->pushOrderToApi($order);
+                } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
+                    $codeCraftOrderPusher = new CodeCraftOrderPusherService();
+                    $codeCraftOrderPusher->pushOrderToApi($order);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
+            }
+        } else {
+            Log::info('Order pusher disabled - skipping API call', ['orderId' => $order->id]);
+        }
 
         return response()->json(['message' => 'Order created successfully'], 201);
     }

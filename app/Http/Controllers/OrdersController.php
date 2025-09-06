@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Services\OrderPusherService;
+use App\Services\CodeCraftOrderPusherService;
+use App\Models\Setting;
 
 class OrdersController extends Controller
 {
@@ -133,14 +135,24 @@ class OrdersController extends Controller
             DB::commit();
             Log::info('Database transaction committed.');
 
-            // Push orders to external API
-            $orderPusher = new OrderPusherService();
-            foreach ($createdOrders as $order) {
-                try {
-                    $orderPusher->pushOrderToApi($order);
-                } catch (\Exception $e) {
-                    Log::error('Failed to push order to external API', ['orderId' => $order->id, 'error' => $e->getMessage()]);
+            // Push orders to external APIs based on network (if enabled)
+            if (Setting::get('order_pusher_enabled', 1)) {
+                $mtnOrderPusher = new OrderPusherService();
+                $codeCraftOrderPusher = new CodeCraftOrderPusherService();
+                
+                foreach ($createdOrders as $order) {
+                    try {
+                        if (strtolower($order->network) === 'mtn') {
+                            $mtnOrderPusher->pushOrderToApi($order);
+                        } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
+                            $codeCraftOrderPusher->pushOrderToApi($order);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
+                    }
                 }
+            } else {
+                Log::info('Order pusher disabled - skipping API calls', ['orderCount' => count($createdOrders)]);
             }
 
             $orderCount = count($createdOrders);

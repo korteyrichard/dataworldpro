@@ -31,7 +31,7 @@ export default function Welcome() {
                 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700,800,900" rel="stylesheet" />
             </Head>
             
-            <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-purple-700 overflow-x-hidden">
+            <div className="min-h-screen bg-slate-100 overflow-x-hidden">
                 {/* Navigation */}
                 <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
                     scrolled 
@@ -40,8 +40,8 @@ export default function Welcome() {
                 } border-b border-white/20`}>
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center py-4">
-                            <div className="text-2xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                SuperData
+                            <div className="text-2xl  text-yellow-500 font-black  bg-clip-text ">
+                                PRODataWorld.
                             </div>
                             {/* Hamburger for mobile */}
                             <button
@@ -58,7 +58,7 @@ export default function Welcome() {
                                 {auth.user ? (
                                     <Link
                                         href={auth.user.role === 'agent' ? route('dashboard') : auth.user.role === 'admin' ? route('admin.dashboard') : route('dashboard')}
-                                        className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                                        className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
                                     >
                                         Dashboard
                                     </Link>
@@ -76,12 +76,7 @@ export default function Welcome() {
                                         >
                                             Login
                                         </Link>
-                                        <a
-                                            href="#community"
-                                            className="px-6 py-2 text-gray-700 font-medium rounded-full hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
-                                        >
-                                            Join Community
-                                        </a>
+                                        
                                     </>
                                 )}
                             </div>
@@ -108,14 +103,14 @@ export default function Welcome() {
                                         </Link>
                                         <Link
                                             href={route('login')}
-                                            className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
+                                            className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-yellow-600 hover:to-yellow-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
                                             onClick={() => setNavOpen(false)}
                                         >
                                             Login
                                         </Link>
                                         <a
                                             href="https://whatsapp.com/channel/0029VbBdG8d2ER6aWSFGSr28"
-                                            className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
+                                            className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-yellow-600 hover:to-yellow-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
                                             onClick={() => setNavOpen(false)}
                                         >
                                             Join Community
@@ -137,28 +132,27 @@ export default function Welcome() {
                         <div className="absolute bottom-1/3 right-1/4 w-1 h-1 bg-white rounded-full animate-pulse delay-700"></div>
                     </div>
                     
-                    {/* Floating Phone Icon */}
-                    <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-6xl opacity-10 animate-bounce hidden lg:block">
-                        📱
-                    </div>
+                   
+                    
 
                     <div className="max-w-4xl mx-auto z-10 relative mt-[50px]">
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-6 leading-tight">
-                            Make{' '}
+        
                             <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 bg-clip-text text-transparent">
-                                500 Cedis or More per week
+                                Simple and Affordable Data For Everyone
                             </span>
                             <br />
-                            Using Your Phone
+                            
                         </h1>
-                        <p className="text-xl sm:text-2xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed">
-                            Turn your smartphone into a money-making machine. Join others earning real cash by reselling internet data from the comfort of their homes.
+                        <p className="text-xl sm:text-2xl text-black mb-12 max-w-3xl mx-auto leading-relaxed">
+                             Get in touch with us and explore our affordable data plans.
+
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                             {auth.user ? (
                                 <Link
                                     href={auth.user.role === 'agent' ? route('dashboard') : auth.user.role === 'admin' ? route('admin.dashboard') : route('become_an_agent')}
-                                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold text-lg rounded-full hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 transform hover:scale-105"
+                                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-bold text-lg rounded-full hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 transform hover:scale-105"
                                 >
                                     Go to Dashboard
                                 </Link>

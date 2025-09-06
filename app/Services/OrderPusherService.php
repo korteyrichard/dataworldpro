@@ -38,9 +38,10 @@ class OrderPusherService
             }
 
             if (!$networkId || !$sharedBundle) {
-                Log::warning('Missing required order data', [
+                Log::warning('Skipping non-MTN product or missing data', [
                     'order_id' => $order->id,
-                    'item_id' => $item->id
+                    'item_id' => $item->id,
+                    'product' => $item->name
                 ]);
                 continue;
             }
@@ -91,14 +92,8 @@ class OrderPusherService
         
         if (stripos($productName, 'mtn') !== false) {
             return 3;
-        } elseif (stripos($productName, 'telecel') !== false) {
-            return 2;
-        } elseif (stripos($productName, 'AT Data (Instant)') !== false || stripos($productName, 'airtel') !== false || stripos($productName, 'tigo') !== false) {
-            return 1;
-        } elseif (stripos($productName, 'AT (Big Packages)') !== false) {
-            return 4;
         }
         
-        return 3;
+        return null;
     }
 }

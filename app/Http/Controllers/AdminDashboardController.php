@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -70,6 +71,7 @@ class AdminDashboardController extends Controller
             'todayUsers' => $todayUsers,
             'todayOrders' => $todayOrders,
             'todayTransactions' => $todayTransactions,
+            'orderPusherEnabled' => (bool) Setting::get('order_pusher_enabled', 1),
         ]);
     }
 
@@ -635,5 +637,17 @@ class AdminDashboardController extends Controller
         $order->update(['status' => $request->status]);
 
         return redirect()->back()->with('success', 'AFA order status updated successfully.');
+    }
+
+    /**
+     * Toggle order pusher functionality.
+     */
+    public function toggleOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Order pusher {$status} successfully.");
     }
 }
