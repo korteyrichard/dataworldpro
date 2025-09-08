@@ -161,7 +161,7 @@ class AdminDashboardController extends Controller
             $orders->where('status', $request->input('status'));
         }
 
-        $paginatedOrders = $orders->paginate(10);
+        $paginatedOrders = $orders->paginate(50);
         
         // Transform orders to include variant information
         $paginatedOrders->getCollection()->transform(function($order) {

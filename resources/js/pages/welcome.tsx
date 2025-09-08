@@ -41,7 +41,7 @@ export default function Welcome() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center py-4">
                             <div className="text-2xl  text-yellow-500 font-black  bg-clip-text ">
-                                PRODataWorld.
+                              <img src='/prodataworld.jpg' alt="Dataworld Logo" className="w-20 h-20 mb-4 mx-auto rounded-3xl" />
                             </div>
                             {/* Hamburger for mobile */}
                             <button
@@ -164,12 +164,7 @@ export default function Welcome() {
                                     >
                                         Start Earning Today
                                     </Link>
-                                    <a
-                                        href="#community"
-                                        className="w-full sm:w-auto px-8 py-4 bg-white/20 text-white font-semibold text-lg rounded-full border-2 border-white/30 backdrop-blur-lg hover:bg-white/30 hover:-translate-y-1 transition-all duration-300 transform hover:scale-105"
-                                    >
-                                        Join Community
-                                    </a>
+                                    
                                 </>
                             )}
                         </div>

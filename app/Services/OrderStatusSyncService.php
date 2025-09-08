@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Log;
 
 class OrderStatusSyncService
 {
-    private $codeCraftAgentEmail = 'YOUR_AGENT_EMAIL';
-    private $mtnApiKey = 'YOUR_MTN_API_KEY';
+    private $codeCraftAgentEmail = 'ammababaah@gmail.com';
+    private $mtnApiKey = 'b2fe77274d245a52c7bf4c03ba96f46c2bed9be3';
 
     public function syncOrderStatuses()
     {
@@ -99,6 +99,7 @@ class OrderStatusSyncService
         $statusMap = [
             'Crediting successful' => 'completed',
             'completed' => 'completed',
+            'delivered' => 'completed',
             'processing' => 'processing',
             'placed' => 'processing',
             'cancelled' => 'cancelled',

@@ -31,6 +31,7 @@ export default function Register() {
             <Head title="Register" />
             <div className="flex flex-col items-center justify-center min-h-[70vh]">
                 <div className="w-full max-w-md bg-white/60 dark:bg-gray-800/70 backdrop-blur-lg rounded-3xl shadow-2xl p-10 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                    <img src='/prodataworld.jpg' alt="Dataworld Logo" className="w-20 h-20 mb-4 mx-auto rounded-3xl" />
                     <div className="flex flex-col items-center mb-8">
                         <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight mb-1">Create Account</h2>
                         <p className="text-gray-500 dark:text-gray-400 text-base">Sign up to get started</p>

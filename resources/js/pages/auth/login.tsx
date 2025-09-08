@@ -29,7 +29,7 @@ export default function Login() {
             <div className="flex flex-col items-center justify-center min-h-[70vh]">
                 <div className="w-full max-w-md bg-white/60 dark:bg-gray-800/70 backdrop-blur-lg rounded-3xl shadow-2xl p-10 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
                     <div className="flex flex-col items-center mb-8">
-                        
+                        <img src='/prodataworld.jpg' alt="Dataworld Logo" className="w-20 h-20 mb-4 mx-auto rounded-3xl" />
                         <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight mb-1">Sign In</h2>
                         <p className="text-gray-500 dark:text-gray-400 text-base">Access your account</p>
                     </div>
