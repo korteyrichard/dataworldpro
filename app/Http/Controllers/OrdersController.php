@@ -67,11 +67,7 @@ class OrdersController extends Controller
             return redirect()->back()->with('error', 'Insufficient wallet balance. Top up to proceed with the purchase.');
         }
 
-        // Group cart items by network
-        $itemsByNetwork = $cartItems->groupBy(function ($item) {
-            return $item->product->network;
-        });
-        Log::info('Cart items grouped by network.', ['networks' => $itemsByNetwork->keys()->toArray()]);
+        Log::info('Creating separate orders for each cart item.', ['cartItemsCount' => $cartItems->count()]);
 
         DB::beginTransaction();
         Log::info('Database transaction started.');
@@ -83,42 +79,35 @@ class OrdersController extends Controller
 
             $createdOrders = [];
 
-            // Create separate order for each network
-            foreach ($itemsByNetwork as $network => $networkItems) {
-                // Calculate total for this network
-                $networkTotal = $networkItems->sum(function ($item) {
-                    return (float) ($item->price ?? ($item->productVariant->price ?? 0));
-                });
+            // Create separate order for each cart item
+            foreach ($cartItems as $item) {
+                $itemTotal = (float) ($item->price ?? ($item->productVariant->price ?? 0));
+                $network = $item->product->network;
 
-                // Get beneficiary numbers for this network (could be multiple)
-                $beneficiaryNumbers = $networkItems->pluck('beneficiary_number')->unique()->implode(', ');
-
-                // Create the order for this network
+                // Create the order for this item
                 $order = Order::create([
                     'user_id' => $user->id,
-                    'status' => 'processing',
-                    'total' => $networkTotal,
-                    'beneficiary_number' => $beneficiaryNumbers,
+                    'status' => 'pending',
+                    'total' => $itemTotal,
+                    'beneficiary_number' => $item->beneficiary_number,
                     'network' => $network,
                 ]);
-                Log::info('Order created for network.', ['orderId' => $order->id, 'network' => $network, 'total' => $networkTotal]);
+                Log::info('Order created for cart item.', ['orderId' => $order->id, 'network' => $network, 'total' => $itemTotal, 'beneficiaryNumber' => $item->beneficiary_number]);
 
-                // Attach products to the order
-                foreach ($networkItems as $item) {
-                    $order->products()->attach($item->product_id, [
-                        'quantity' => (int) ($item->quantity ?? 1),
-                        'price' => (float) ($item->price ?? ($item->productVariant->price ?? 0)),
-                        'beneficiary_number' => $item->beneficiary_number,
-                        'product_variant_id' => $item->product_variant_id,
-                    ]);
-                    Log::info('Product attached to order.', ['orderId' => $order->id, 'productId' => $item->product_id, 'beneficiaryNumber' => $item->beneficiary_number]);
-                }
+                // Attach the product to the order
+                $order->products()->attach($item->product_id, [
+                    'quantity' => (int) ($item->quantity ?? 1),
+                    'price' => $itemTotal,
+                    'beneficiary_number' => $item->beneficiary_number,
+                    'product_variant_id' => $item->product_variant_id,
+                ]);
+                Log::info('Product attached to order.', ['orderId' => $order->id, 'productId' => $item->product_id, 'beneficiaryNumber' => $item->beneficiary_number]);
 
                 // Create a transaction record for this order
                 \App\Models\Transaction::create([
                     'user_id' => $user->id,
                     'order_id' => $order->id,
-                    'amount' => $networkTotal,
+                    'amount' => $itemTotal,
                     'status' => 'completed',
                     'type' => 'order',
                     'description' => 'Order placed for ' . $network . ' data/airtime.',
@@ -135,30 +124,34 @@ class OrdersController extends Controller
             DB::commit();
             Log::info('Database transaction committed.');
 
-            // Push orders to external APIs based on network (if enabled)
-            if (Setting::get('order_pusher_enabled', 1)) {
-                $mtnOrderPusher = new OrderPusherService();
-                $codeCraftOrderPusher = new CodeCraftOrderPusherService();
-                
-                foreach ($createdOrders as $order) {
-                    try {
-                        if (strtolower($order->network) === 'mtn') {
-                            $mtnOrderPusher->pushOrderToApi($order);
-                        } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
-                            $codeCraftOrderPusher->pushOrderToApi($order);
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
+            // Push orders to external APIs based on network and individual service settings
+            $jaybartEnabled = (bool) Setting::get('jaybart_order_pusher_enabled', 1);
+            $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);
+            
+            foreach ($createdOrders as $order) {
+                try {
+                    if (strtolower($order->network) === 'mtn' && $jaybartEnabled) {
+                        $mtnOrderPusher = new OrderPusherService();
+                        $mtnOrderPusher->pushOrderToApi($order);
+                        Log::info('Order pushed to Jaybart API', ['orderId' => $order->id, 'network' => $order->network]);
+                    } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && $codecraftEnabled) {
+                        $codeCraftOrderPusher = new CodeCraftOrderPusherService();
+                        $codeCraftOrderPusher->pushOrderToApi($order);
+                        Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);
+                    } else {
+                        $service = strtolower($order->network) === 'mtn' ? 'Jaybart' : 'CodeCraft';
+                        $enabled = strtolower($order->network) === 'mtn' ? $jaybartEnabled : $codecraftEnabled;
+                        Log::info('Order pusher disabled for service', ['orderId' => $order->id, 'network' => $order->network, 'service' => $service, 'enabled' => $enabled]);
                     }
+                } catch (\Exception $e) {
+                    Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
                 }
-            } else {
-                Log::info('Order pusher disabled - skipping API calls', ['orderCount' => count($createdOrders)]);
             }
 
             $orderCount = count($createdOrders);
             $successMessage = $orderCount === 1 
                 ? 'Order placed successfully!' 
-                : "$orderCount orders placed successfully (grouped by network)!";
+                : "$orderCount orders placed successfully!";
 
             return redirect()->route('dashboard.orders')->with('success', $successMessage);
 

@@ -71,7 +71,8 @@ class AdminDashboardController extends Controller
             'todayUsers' => $todayUsers,
             'todayOrders' => $todayOrders,
             'todayTransactions' => $todayTransactions,
-            'orderPusherEnabled' => (bool) Setting::get('order_pusher_enabled', 1),
+            'jaybartOrderPusherEnabled' => (bool) Setting::get('jaybart_order_pusher_enabled', 1),
+            'codecraftOrderPusherEnabled' => (bool) Setting::get('codecraft_order_pusher_enabled', 1),
         ]);
     }
 
@@ -234,7 +235,7 @@ class AdminDashboardController extends Controller
         // Send SMS if status changed to completed
         if ($request->status === 'completed' && $oldStatus !== 'completed' && $order->user->phone) {
             $smsService = new SmsService();
-            $message = "Your order #{$order->id} has been completed. Total: GHS " . number_format($order->total, 2);
+            $message = "Your order #{$order->id} for {$order->products->first()->name} to {$order->beneficiary_number} has been completed. Total: GHS " . number_format($order->total, 2);
             $smsService->sendSms($order->user->phone, $message);
         }
 
@@ -370,13 +371,18 @@ class AdminDashboardController extends Controller
     /**
      * Credit user's wallet.
      */
-    public function creditWallet(Request $request, User $user)
+    public function creditWallet(Request $request, User $user, SmsService $smsService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:0.01',
         ]);
 
-        $user->increment('wallet_balance', $request->amount);
+        $amount = $request->amount;
+        $user->increment('wallet_balance', $amount);
+
+        // Send SMS notification
+        $message = "Your wallet has been credited with GHS " . number_format($amount, 2) . ". New balance: GHS " . number_format($user->wallet_balance, 2);
+        $smsService->sendSms($user->phone, $message);
 
         return redirect()->route('admin.users')->with('success', 'Wallet credited successfully.');
     }
@@ -384,7 +390,7 @@ class AdminDashboardController extends Controller
     /**
      * Debit user's wallet.
      */
-    public function debitWallet(Request $request, User $user)
+    public function debitWallet(Request $request, User $user, SmsService $smsService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:0.01',
@@ -394,7 +400,12 @@ class AdminDashboardController extends Controller
             return redirect()->route('admin.users')->with('error', 'Insufficient wallet balance.');
         }
 
-        $user->decrement('wallet_balance', $request->amount);
+        $amount = $request->amount;
+        $user->decrement('wallet_balance', $amount);
+
+        // Send SMS notification
+        $message = "Your wallet has been debited with GHS " . number_format($amount, 2) . ". New balance: GHS " . number_format($user->wallet_balance, 2);
+        $smsService->sendSms($user->phone, $message);
 
         return redirect()->route('admin.users')->with('success', 'Wallet debited successfully.');
     }
@@ -640,14 +651,26 @@ class AdminDashboardController extends Controller
     }
 
     /**
-     * Toggle order pusher functionality.
+     * Toggle Jaybart order pusher functionality.
      */
-    public function toggleOrderPusher(Request $request)
+    public function toggleJaybartOrderPusher(Request $request)
     {
         $enabled = $request->input('enabled', false);
-        Setting::set('order_pusher_enabled', $enabled ? '1' : '0');
+        Setting::set('jaybart_order_pusher_enabled', $enabled ? '1' : '0');
         
         $status = $enabled ? 'enabled' : 'disabled';
-        return redirect()->back()->with('success', "Order pusher {$status} successfully.");
+        return redirect()->back()->with('success', "Jaybart order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle CodeCraft order pusher functionality.
+     */
+    public function toggleCodecraftOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('codecraft_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "CodeCraft order pusher {$status} successfully.");
     }
 }

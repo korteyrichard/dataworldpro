@@ -13,6 +13,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AFAController;
 use App\Http\Controllers\ApiDocsController;
+use App\Http\Controllers\TermsController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -34,8 +35,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard/orders', [OrdersController::class, 'index'])->name('dashboard.orders');
     Route::get('/dashboard/transactions', [TransactionsController::class, 'index'])->name('dashboard.transactions');
     Route::get('/dashboard/afa-registration', [AFAController::class, 'index'])->name('dashboard.afa');
+    Route::post('/dashboard/afa-registration', [AFAController::class, 'store'])->name('dashboard.afa.store');
     Route::get('/dashboard/afa-orders', [AFAController::class, 'afaOrders'])->name('dashboard.afa.orders');
     Route::get('/dashboard/api-docs', [ApiDocsController::class, 'index'])->name('dashboard.api-docs');
+    Route::get('/dashboard/terms', [TermsController::class, 'index'])->name('dashboard.terms');
 
     // Cart routes
     Route::post('/add-to-cart', [CartController::class, 'store'])->name('add.to.cart');
@@ -87,7 +90,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->name('admin.')->group(fun
     Route::post('admin/orders/export', [\App\Http\Controllers\AdminDashboardController::class, 'exportOrders'])->name('orders.export');
     Route::get('admin/afa-orders', [\App\Http\Controllers\AdminDashboardController::class, 'afaOrders'])->name('afa-orders');
     Route::put('admin/afa-orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateAfaOrderStatus'])->name('afa.orders.updateStatus');
-    Route::post('admin/toggle-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleOrderPusher'])->name('toggle.order.pusher');
+    Route::post('admin/toggle-jaybart-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJaybartOrderPusher'])->name('toggle.jaybart.order.pusher');
+    Route::post('admin/toggle-codecraft-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftOrderPusher'])->name('toggle.codecraft.order.pusher');
 });
 
 // Paystack payment routes

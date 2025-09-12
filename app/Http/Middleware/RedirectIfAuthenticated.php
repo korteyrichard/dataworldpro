@@ -21,7 +21,20 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                return redirect('/dashboard');
+                $user = Auth::guard($guard)->user();
+                
+                // Log the redirect attempt
+                \Log::info('RedirectIfAuthenticated middleware redirect', [
+                    'user_id' => $user->id,
+                    'role' => $user->role,
+                    'current_url' => $request->url(),
+                    'intended_url' => session()->get('url.intended')
+                ]);
+                
+                return redirect()->to(match($user->role) {
+                    'admin' => route('admin.dashboard'),
+                    default => route('dashboard')
+                });
             }
         }
 

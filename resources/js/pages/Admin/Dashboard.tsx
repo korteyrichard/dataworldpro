@@ -32,7 +32,8 @@ interface AdminDashboardProps extends PageProps {
   todayUsers: User[];
   todayOrders: Order[];
   todayTransactions: Transaction[];
-  orderPusherEnabled: boolean;
+  jaybartOrderPusherEnabled: boolean;
+  codecraftOrderPusherEnabled: boolean;
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -50,13 +51,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   todayUsers,
   todayOrders,
   todayTransactions,
-  orderPusherEnabled,
+  jaybartOrderPusherEnabled,
+  codecraftOrderPusherEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
 
-  const toggleOrderPusher = () => {
-    router.post('/admin/toggle-order-pusher', {
-      enabled: !orderPusherEnabled
+  const toggleJaybartOrderPusher = () => {
+    router.post('/admin/toggle-jaybart-order-pusher', {
+      enabled: !jaybartOrderPusherEnabled
+    });
+  };
+
+  const toggleCodecraftOrderPusher = () => {
+    router.post('/admin/toggle-codecraft-order-pusher', {
+      enabled: !codecraftOrderPusherEnabled
     });
   };
 
@@ -89,29 +97,56 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </section>
 
-        {/* Order Pusher Control */}
+        {/* Order Pusher Controls */}
         <section>
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">System Controls</h3>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white">Order Pusher</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-300">
-                  {orderPusherEnabled ? 'Orders are being pushed to external APIs' : 'Order pushing is disabled'}
-                </p>
-              </div>
-              <button
-                onClick={toggleOrderPusher}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                  orderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    orderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+          <div className="space-y-4">
+            {/* Jaybart Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Jaybart Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {jaybartOrderPusherEnabled ? 'Orders are being pushed to Jaybart API' : 'Jaybart order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleJaybartOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    jaybartOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      jaybartOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* CodeCraft Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">CodeCraft Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {codecraftOrderPusherEnabled ? 'Orders are being pushed to CodeCraft API' : 'CodeCraft order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleCodecraftOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    codecraftOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      codecraftOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </section>

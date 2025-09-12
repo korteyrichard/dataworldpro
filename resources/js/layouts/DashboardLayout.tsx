@@ -39,6 +39,7 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const navigation: NavigationItem[] = [
+        { name: 'terms of service', href: route('dashboard.terms'), icon: 'Lock', current: false },
         { name: 'Dashboard', href: route('dashboard'), icon: 'LayoutDashboard', current: route().current('dashboard') },
         { name: 'Wallet', href: route('dashboard.wallet'), icon: 'Wallet', current: route().current('dashboard.wallet') },
         { name: 'Join Us', href: route('dashboard.joinUs'), icon: 'Contact', current: route().current('dashboard.joinUs') },
@@ -47,12 +48,13 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
         { name: 'Transactions', href: route('dashboard.transactions'), icon: 'Receipt', current: route().current('dashboard.transactions') },
         ...(user.role === 'agent' || user.role === 'admin' ? [{ name: 'API Docs', href: route('dashboard.api-docs'), icon: 'Code' as IconName, current: route().current('dashboard.api-docs') }] : []),
         { name: 'Settings', href: route('profile.edit'), icon: 'Settings', current: route().current('profile.edit') || route().current('password.edit') || route().current('appearance') },
+
     ];
 
    
 
     const bottomNavigation: NavigationItem[] = [
-        { name: 'Log Out', href: route('logout'), icon: 'LogOut', current: false },
+
     ];
 
     const renderNavigationItems = (items: NavigationItem[], closeSidebar = false) => {
@@ -81,8 +83,10 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
         <div className="flex flex-col flex-grow bg-white dark:bg-gray-800 pt-5 pb-4 overflow-y-auto h-full">
             <div className="flex items-center flex-shrink-0 px-4">
                 <Link href="/">
-                    <div className="text-gray-500 text-2xl font-bold">
-                        {isMobile ? 'DATAWORLDPRO' : 'DATAWORLDPRO'}
+                    <div className="text-black dark:text-white text-lg font-bold flex flex-row gap-4 items-center justify-between">
+                        
+                        <img src='/prodataworld.jpg' alt="Dataworld Logo" className="w-15 h-15 mb-4 mx-auto rounded-3xl " />
+                        <h2 className='font-bold text-1xl'>ProDataWorld</h2>
                     </div>
                 </Link>
             </div>
@@ -90,10 +94,8 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
                 <div className="px-2 space-y-1">
                     {renderNavigationItems(navigation, isMobile)}
                 </div>
-                <Link href={route('logout')} method="post" as="button" className="w-full ml-3 text-left absolute bottom-0 px-2 py-2 text-sm font-bold rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white">
-                     Log out
-                </Link>
-                <a href='https://wa.me/message/VGH6FJR76ONGK1'   className="w-[200px] ml-3 text-left mt-10 px-2 py-2 text-sm font-bold rounded-md text-gray-600 bg-slate-500 dark:text-gray-300 hover:bg-green-600 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white ">
+                
+                <a href='https://wa.link/59fwem'   className="w-[200px] ml-3 text-left mt-10 px-2 py-2 text-sm font-bold rounded-md text-gray-600 bg-slate-500 dark:text-gray-300 hover:bg-green-600 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white ">
                      Contact Support
                 </a>
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { Head } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 
 interface AFAProduct {
@@ -8,16 +8,6 @@ interface AFAProduct {
   name: string;
   price: number;
   status: string;
-}
-
-interface AFAFormData {
-  afa_product_id: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  dob: string;
-  occupation: string;
-  region: string;
 }
 
 interface AFAOrder {
@@ -33,17 +23,16 @@ interface AFAOrder {
   afaproduct: AFAProduct;
 }
 
-export default function AfaRegistration({ auth }: PageProps) {
-  const [products, setProducts] = useState<AFAProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<AFAProduct | null>(null);
-  const [afaOrders, setAfaOrders] = useState<AFAOrder[]>([]);
+interface AFARegistrationProps extends PageProps {
+  afaProducts: AFAProduct[];
+  afaOrders: AFAOrder[];
+}
+
+export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFARegistrationProps) {
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<AFAProduct | null>(null);
   
-  const [formData, setFormData] = useState<AFAFormData>({
+  const { data, setData, post, processing, errors, reset } = useForm({
     afa_product_id: '',
     full_name: '',
     email: auth.user.email,
@@ -59,131 +48,38 @@ export default function AfaRegistration({ auth }: PageProps) {
     'Western North', 'Ahafo', 'Bono East', 'Oti', 'North East', 'Savannah'
   ];
 
-  useEffect(() => {
-    fetchProducts();
-    fetchAfaOrders();
-  }, []);
 
-  const fetchProducts = async () => {
-    try {
-      const response = await fetch('/api/v1/afa/products', {
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-        }
-      });
-      const data = await response.json();
-      setProducts(data);
-    } catch (err) {
-      setError('Failed to load AFA products');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAfaOrders = async () => {
-    try {
-      const response = await fetch('/api/v1/afa', {
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-        }
-      });
-      const data = await response.json();
-      setAfaOrders(data);
-    } catch (err) {
-      console.error('Failed to load AFA orders');
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setData(name as any, value);
     
     if (name === 'afa_product_id') {
-      const product = products.find(p => p.id.toString() === value);
+      const product = afaProducts.find(p => p.id.toString() === value);
       setSelectedProduct(product || null);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
 
     if (!selectedProduct) {
-      setError('Please select an AFA product');
-      setSubmitting(false);
       return;
     }
 
     if (auth.user.wallet_balance < selectedProduct.price) {
-      setError(`Insufficient wallet balance. You need GHS ${selectedProduct.price} but have GHS ${auth.user.wallet_balance}`);
-      setSubmitting(false);
       return;
     }
 
-    try {
-      const response = await fetch('/api/v1/afa', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        setSuccess('AFA registration submitted successfully!');
-        setFormData({
-          afa_product_id: '',
-          full_name: '',
-          email: auth.user.email,
-          phone: auth.user.phone || '',
-          dob: '',
-          occupation: '',
-          region: ''
-        });
+    post('/dashboard/afa-registration', {
+      onSuccess: () => {
+        reset();
         setSelectedProduct(null);
-        fetchAfaOrders();
-        // Refresh user data to update wallet balance
-        window.location.reload();
-      } else {
-        setError(data.error || 'Registration failed');
       }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+    });
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout
-        user={auth.user}
-        header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">AFA Registration</h2>}
-      >
-        <Head title="AFA Registration" />
-        <div className="py-12">
-          <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-              <div className="p-6 text-center text-gray-900 dark:text-gray-100">
-                Loading AFA products...
-              </div>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+
 
   return (
     <DashboardLayout
@@ -230,15 +126,11 @@ export default function AfaRegistration({ auth }: PageProps) {
             AFA Registration Form
           </h3>
 
-          {error && (
+          {Object.keys(errors).length > 0 && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-              {success}
+              {Object.values(errors).map((error, index) => (
+                <div key={index}>{error}</div>
+              ))}
             </div>
           )}
 
@@ -250,13 +142,13 @@ export default function AfaRegistration({ auth }: PageProps) {
               </label>
               <select
                 name="afa_product_id"
-                value={formData.afa_product_id}
+                value={data.afa_product_id}
                 onChange={handleInputChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
               >
                 <option value="">Choose an AFA product...</option>
-                {products.map(product => (
+                {afaProducts.map(product => (
                   <option key={product.id} value={product.id}>
                     {product.name} - GHS {product.price}
                   </option>
@@ -273,7 +165,7 @@ export default function AfaRegistration({ auth }: PageProps) {
                 <input
                   type="text"
                   name="full_name"
-                  value={formData.full_name}
+                  value={data.full_name}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
@@ -288,7 +180,7 @@ export default function AfaRegistration({ auth }: PageProps) {
                 <input
                   type="email"
                   name="email"
-                  value={formData.email}
+                  value={data.email}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
@@ -303,7 +195,7 @@ export default function AfaRegistration({ auth }: PageProps) {
                 <input
                   type="tel"
                   name="phone"
-                  value={formData.phone}
+                  value={data.phone}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
@@ -318,7 +210,7 @@ export default function AfaRegistration({ auth }: PageProps) {
                 <input
                   type="date"
                   name="dob"
-                  value={formData.dob}
+                  value={data.dob}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
@@ -332,7 +224,7 @@ export default function AfaRegistration({ auth }: PageProps) {
                 <input
                   type="text"
                   name="occupation"
-                  value={formData.occupation}
+                  value={data.occupation}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
@@ -346,7 +238,7 @@ export default function AfaRegistration({ auth }: PageProps) {
                 </label>
                 <select
                   name="region"
-                  value={formData.region}
+                  value={data.region}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
@@ -366,10 +258,10 @@ export default function AfaRegistration({ auth }: PageProps) {
               </div>
               <button
                 type="submit"
-                disabled={submitting || !selectedProduct || auth.user.wallet_balance < (selectedProduct?.price || 0)}
+                disabled={processing || !selectedProduct || auth.user.wallet_balance < (selectedProduct?.price || 0)}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-6 rounded-md transition duration-200"
               >
-                {submitting ? 'Submitting...' : `Register for AFA ${selectedProduct ? `(GHS ${selectedProduct.price})` : ''}`}
+                {processing ? 'Submitting...' : `Register for AFA ${selectedProduct ? `(GHS ${selectedProduct.price})` : ''}`}
               </button>
             </div>
           </form>

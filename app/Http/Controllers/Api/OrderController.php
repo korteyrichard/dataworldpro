@@ -68,7 +68,7 @@ class OrderController extends Controller
                 'total' => $variant->price,
                 'beneficiary_number' => $request->beneficiary_number,
                 'network' => $product->network,
-                'status' => 'processing'
+                'status' => 'pending'
             ]);
 
             $order->products()->attach($product->id, [
@@ -82,23 +82,47 @@ class OrderController extends Controller
         });
         
         // Push order to external API based on network (if enabled)
-        if (Setting::get('order_pusher_enabled', 1)) {
-            try {
-                if (strtolower($order->network) === 'mtn') {
-                    $mtnOrderPusher = new OrderPusherService();
-                    $mtnOrderPusher->pushOrderToApi($order);
-                } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
-                    $codeCraftOrderPusher = new CodeCraftOrderPusherService();
-                    $codeCraftOrderPusher->pushOrderToApi($order);
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
+        try {
+            if (strtolower($order->network) === 'mtn' && Setting::get('jaybart_order_pusher_enabled', 1)) {
+                $mtnOrderPusher = new OrderPusherService();
+                $mtnOrderPusher->pushOrderToApi($order);
+            } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && Setting::get('codecraft_order_pusher_enabled', 1)) {
+                $codeCraftOrderPusher = new CodeCraftOrderPusherService();
+                $codeCraftOrderPusher->pushOrderToApi($order);
+            } else {
+                Log::info('Order pusher disabled for network - skipping API call', ['orderId' => $order->id, 'network' => $order->network]);
             }
-        } else {
-            Log::info('Order pusher disabled - skipping API call', ['orderId' => $order->id]);
+        } catch (\Exception $e) {
+            Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
         }
 
-        return response()->json(['message' => 'Order created successfully'], 201);
+        // Load the order with its products and user for the response
+        $order->load(['products' => function($query) {
+            $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
+        }, 'user']);
+        
+        return response()->json([
+            'message' => 'Order created successfully',
+            'order' => [
+                'reference_id' => $order->id,
+                'total' => $order->total,
+                'status' => $order->status,
+                'network' => $order->network,
+                'beneficiary_number' => $order->beneficiary_number,
+                'created_at' => $order->created_at,
+                'user' => [
+                    'name' => $order->user->name,
+                    'email' => $order->user->email
+                ],
+                'products' => $order->products->map(function($product) {
+                    return [
+                        'name' => $product->name,
+                        'quantity' => $product->pivot->quantity,
+                        'price' => $product->pivot->price
+                    ];
+                })
+            ]
+        ], 201);
     }
 
     /**

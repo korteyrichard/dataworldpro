@@ -364,7 +364,7 @@ const submitEditProduct = (e: React.FormEvent) => {
                           className="w-full px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                         >
                           <option value="">Select</option>
-                          {[...Array(100)].map((_, i) => (
+                          {[...Array(500)].map((_, i) => (
                             <option key={i + 1} value={`${i + 1}GB`}>{i + 1}GB</option>
                           ))}
                         </select>
@@ -545,7 +545,7 @@ const submitEditProduct = (e: React.FormEvent) => {
                           className="w-full px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                         >
                           <option value="">Select</option>
-                          {[...Array(100)].map((_, i) => (
+                          {[...Array(500)].map((_, i) => (
                             <option key={i + 1} value={`${i + 1}GB`}>{i + 1}GB</option>
                           ))}
                         </select>

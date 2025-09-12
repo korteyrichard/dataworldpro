@@ -78,11 +78,11 @@ export default function AdminTransactions() {
             value={filterType}
             onChange={handleFilterChange}
           >
-            <option value="">All Types</option>
-            <option value="topup">Wallet Top Ups</option>
-            <option value="order">Order Purchases</option>
-            <option value="agent_fee">Agent Fees</option>
-            <option value="refund">Refunds</option>
+            <option value="" className='text-slate-600'>All Types</option>
+            <option value="topup" className='text-slate-600'>Wallet Top Ups</option>
+            <option value="order" className='text-slate-600'>Order Purchases</option>
+            <option value="agent_fee" className='text-slate-600'>Agent Fees</option>
+            <option value="refund" className='text-slate-600'>Refunds</option>
           </select>
         </div>
         {transactions.data.length === 0 ? (

@@ -6,24 +6,26 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Services\SmsService;
 
 class CodeCraftOrderPusherService
 {
-    private $apiKey = '250905051915-|9zeDO-YdLmuU-rCa?vb-TqFnqX-TcWFy3';
-    private $clientEmail = 'YOUR_AGENT_EMAIL';
+    private $apiKey = '';
+    private $clientEmail = 'ammababaah@gmail.com';
 
     public function pushOrderToApi(Order $order)
     {
         Log::info('Processing order for CodeCraft API push', ['order_id' => $order->id]);
         
-        $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number')->get();
+        $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
         Log::info('Order has items', ['count' => $items->count()]);
 
         foreach ($items as $item) {
             Log::info('Processing item', ['name' => $item->name]);
             
             $beneficiaryPhone = $item->pivot->beneficiary_number;
-            $gig = $item->pivot->quantity;
+            $variant = \App\Models\ProductVariant::find($item->pivot->product_variant_id);
+            $gig = $variant && isset($variant->variant_attributes['size']) ? (int)filter_var($variant->variant_attributes['size'], FILTER_SANITIZE_NUMBER_INT) : 0;
             $network = $this->getNetworkFromProduct($item->name);
             
             if (empty($beneficiaryPhone) || !$network || !$gig) {
@@ -71,7 +73,21 @@ class CodeCraftOrderPusherService
                 ]);
 
                 if ($statusCode == 200) {
-                    $order->update(['reference_id' => $referenceId]);
+                    $updateData = ['reference_id' => $referenceId];
+                    
+                    if ($network === 'AT') {
+                        $updateData['status'] = 'completed';
+                    }
+                    
+                    $order->update($updateData);
+                    
+                    // Send SMS if Ishare order completed and user has phone
+                    if ($network === 'AT' && $order->user && $order->user->phone) {
+                        $smsService = new SmsService();
+                        $message = "Your order #{$order->id} for {$order->products->first()->name} to {$item->pivot->beneficiary_number} has been completed. Total: GHS " . number_format($order->total, 2);
+                        $smsService->sendSms($order->user->phone, $message);
+                    }
+                    
                     Log::info('Order sent successfully to CodeCraft', ['reference_id' => $referenceId]);
                 } else {
                     $message = $responseData['message'] ?? 'Unknown error';

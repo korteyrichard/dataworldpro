@@ -212,10 +212,10 @@ export default function ApiDocs({ auth }: Props) {
                                 Use these network IDs for API requests:
                             </p>
                             <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
-{`MTN: 1
-TELECEL: 2
-ISHARE: 3
-BIGTIME: 4`}
+{`MTN: 5
+TELECEL: 6
+ISHARE: 7
+BIGTIME: 8`}
                             </pre>
                         </div>
                     </div>
@@ -308,24 +308,7 @@ Accept: application/json`}
                         </div>
                     </div>
 
-                    {/* Logout */}
-                    <div className="mb-8">
-                        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Logout</h3>
-                        <div className="space-y-4">
-                            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                    <strong>POST</strong> /api/v1/logout
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">Revoke current API token</p>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                    <strong>POST</strong> /api/v1/logout-all
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">Revoke all API tokens (logout from all devices)</p>
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
             </div>
         </DashboardLayout>

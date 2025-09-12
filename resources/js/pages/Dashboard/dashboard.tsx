@@ -81,10 +81,10 @@ export default function Dashboard({ auth }: DashboardProps) {
   }) || [];
 
   const networks = [
-    { id: 'MTN', name: 'MTN', icon: '📱', color: 'bg-yellow-500' },
-    { id: 'TELECEL', name: 'Telecel', icon: '📞', color: 'bg-red-500' },
-    { id: 'ISHARE', name: 'Ishare', icon: '📡', color: 'bg-blue-500' },
-    { id: 'BIGTIME', name: 'Bigtime', icon: '⏰', color: 'bg-purple-500' }
+    { id: 'MTN', name: 'MTN', icon: '/mtnlogo.jpeg', color: 'bg-yellow-500' },
+    { id: 'TELECEL', name: 'Telecel', icon: '/telecellogo.png', color: 'bg-red-500' },
+    { id: 'ISHARE', name: 'Ishare', icon: '/atlogo.png', color: 'bg-blue-500' },
+    { id: 'BIGTIME', name: 'Bigtime', icon: '/atlogo.png', color: 'bg-purple-500' }
   ];
 
   const getNetworkButtonColors = (networkId: string) => {
@@ -348,14 +348,18 @@ export default function Dashboard({ auth }: DashboardProps) {
 
       <div className="py-6 sm:py-8 lg:py-12">
         <div className="w-full px-4 sm:px-6 lg:px-8">
+          {/* Welcome Message */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Welcome, {auth.user.name}!</h1>
+          </div>
           {/* Action Buttons Section */}
           {auth.user.role === 'customer' && (
           <div className='w-full mb-10'>
                    <Link
                       href={route('become_an_agent')}
-                      className="px-6 py-2 text-gray-700 font-medium rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
+                      className="px-6 py-2 text-white font-medium rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
                     >
-                      Become an Agent
+                      Get API Access
                     </Link>
               </div>)
            }
@@ -442,22 +446,22 @@ export default function Dashboard({ auth }: DashboardProps) {
 
             <div className="p-6">
               {/* Network Selection */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 {networks.map((network) => (
                   <button
                     key={network.id}
                     onClick={() => handleNetworkChange(network.id)}
-                    className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                    className={`p-3 sm:p-4 rounded-lg border-2 transition-all duration-200 ${
                       selectedNetwork === network.id
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
                     }`}
                   >
                     <div className="text-center">
-                      <div className={`w-12 h-12 ${network.color} rounded-lg flex items-center justify-center mx-auto mb-2`}>
-                        <span className="text-white text-xl">{network.icon}</span>
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 ${network.color} rounded-lg flex items-center justify-center mx-auto mb-2`}>
+                        <img src={network.icon} alt={`${network.name} logo`} className="text-white text-lg sm:text-xl" />
                       </div>
-                      <div className="font-medium text-gray-900 dark:text-gray-100">{network.name}</div>
+                      <div className="font-medium text-sm sm:text-base text-gray-900 dark:text-gray-100">{network.name}</div>
                     </div>
                   </button>
                 ))}
@@ -594,7 +598,7 @@ export default function Dashboard({ auth }: DashboardProps) {
                           </SelectItem>
                         ))}
                         {availableSizes.length === 0 && !loadingSizes && (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="no-sizes" disabled>
                             No sizes available
                           </SelectItem>
                         )}

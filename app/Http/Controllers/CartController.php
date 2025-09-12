@@ -35,10 +35,17 @@ class CartController extends Controller
                 return response()->json(['success' => false, 'message' => 'Product not found'], 400);
             }
             
-            // Find the variant by size
-            $sizeKey = strtolower($request->quantity) . 'gb';
+            // Find the variant by size - try multiple formats
+            $sizeKey = strtolower($request->quantity) . 'gb'; // lowercase format
+            $alternateSizeKey = strtoupper($request->quantity) . 'GB'; // uppercase format
+            $plainSize = $request->quantity; // just the number
+            
             $variant = $product->variants()
-                ->whereJsonContains('variant_attributes->size', $sizeKey)
+                ->where(function($query) use ($sizeKey, $alternateSizeKey, $plainSize) {
+                    $query->whereJsonContains('variant_attributes->size', $sizeKey)
+                          ->orWhereJsonContains('variant_attributes->size', $alternateSizeKey)
+                          ->orWhereJsonContains('variant_attributes->size', $plainSize);
+                })
                 ->where('status', 'IN STOCK')
                 ->first();
                 
@@ -329,16 +336,21 @@ class CartController extends Controller
                     Log::info('Validating phone number', ['phone' => $phoneNumber, 'length' => strlen($phoneNumber)]);
                     if (preg_match('/^\d{10}$/', $phoneNumber)) {
                         Log::info('Phone number validation passed', ['phone' => $phoneNumber]);
-                        // Find the variant by size
-                        $sizeKey = strtoupper($bundleSize) . 'GB';
-                        Log::info('Looking for variant', ['size_key' => $sizeKey]);
+                        // Find the variant by size - try multiple formats
+                        $sizeKey = $bundleSize . 'gb'; // lowercase format
+                        $alternateSizeKey = $bundleSize . 'GB'; // uppercase format
+                        Log::info('Looking for variant', ['size_keys' => [$sizeKey, $alternateSizeKey]]);
                         
                         $variant = $product->variants()
-                            ->whereJsonContains('variant_attributes->size', $sizeKey)
+                            ->where(function($query) use ($sizeKey, $alternateSizeKey, $bundleSize) {
+                                $query->whereJsonContains('variant_attributes->size', $sizeKey)
+                                      ->orWhereJsonContains('variant_attributes->size', $alternateSizeKey)
+                                      ->orWhereJsonContains('variant_attributes->size', $bundleSize);
+                            })
                             ->where('status', 'IN STOCK')
                             ->first();
                             
-                        Log::info('Variant search result', ['variant_found' => $variant ? true : false, 'size_key' => $sizeKey]);
+                        Log::info('Variant search result', ['variant_found' => $variant ? true : false, 'tried_size_keys' => [$sizeKey, $alternateSizeKey, $bundleSize]]);
                             
                         if ($variant) {
                             Log::info('Found variant', ['variant_id' => $variant->id, 'price' => $variant->price]);

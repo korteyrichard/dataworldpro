@@ -265,7 +265,9 @@ class DashboardController extends Controller
                     'price' => $variant->price
                 ];
             })
-            ->sortBy('value')
+            ->sortBy(function($item) {
+                return (float) $item['value'];
+            })
             ->values();
             
         return response()->json(['success' => true, 'sizes' => $variants]);

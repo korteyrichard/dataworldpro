@@ -18,6 +18,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'processing', 'completed', 'cancelled'])->default('pending');
             $table->string('beneficiary_number')->nullable();
             $table->string('network')->nullable();
+            $table->string('reference_id')->nullable();
             $table->timestamps();
         });
     }

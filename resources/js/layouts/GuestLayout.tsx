@@ -11,7 +11,7 @@ export default function Guest({ children }: PropsWithChildren) {
             </div>
             <div>
                 <Link href="/">
-                    <div className="text-gray-500 text-2xl font-bold">SuperData</div>
+                    <div className="text-gray-500 text-2xl font-bold"></div>
                 </Link>
             </div>
 

@@ -35,12 +35,19 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
         
-        return match($user->role) {
-            'customer' => redirect()->route('dashboard'),
-            'agent' => redirect()->route('dashboard'),
-            'admin' => redirect()->route('admin.dashboard'),
-            default => redirect()->route('dashboard')
-        };
+        // Log the authentication success and intended redirect
+        \Log::info('User authenticated successfully', [
+            'user_id' => $user->id,
+            'role' => $user->role,
+            'intended_url' => session()->get('url.intended'),
+            'current_url' => $request->url()
+        ]);
+        
+        // Force the redirect to the appropriate dashboard
+        return redirect()->to(match($user->role) {
+            'admin' => route('admin.dashboard'),
+            default => route('dashboard')
+        });
     }
 
     /**

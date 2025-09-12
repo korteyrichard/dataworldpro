@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('afa_orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('Afa_product_id')->constrained()->onDelete('cascade');
+            $table->foreignId('afa_product_id')->constrained()->onDelete('cascade');
             $table->enum('status', ['PENDING', 'COMPLETED', 'CANCELLED']);
             $table->string('full_name');
             $table->string('email');

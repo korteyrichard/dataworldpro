@@ -10,7 +10,7 @@ interface SettingsLayoutProps {
   header?: React.ReactNode;
 }
 
-export const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children, user, header }) => {
+const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children, user, header }) => {
   return (
     <DashboardLayout user={user} header={header}>
       <div className="max-w-7xl mx-auto">
@@ -31,3 +31,6 @@ export const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children, user, 
     </DashboardLayout>
   );
 };
+
+export { SettingsLayout };
+export default SettingsLayout;

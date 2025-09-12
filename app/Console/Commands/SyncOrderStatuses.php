@@ -14,7 +14,8 @@ class SyncOrderStatuses extends Command
     {
         $this->info('Starting order status sync...');
         
-        $syncService = new OrderStatusSyncService();
+        $smsService = app(\App\Services\SmsService::class);
+        $syncService = new OrderStatusSyncService($smsService);
         $syncService->syncOrderStatuses();
         
         $this->info('Order status sync completed.');

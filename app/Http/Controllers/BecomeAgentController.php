@@ -21,7 +21,7 @@ class BecomeAgentController extends Controller
         $reference = 'agent_' . Str::random(16);
         
         // Calculate 1% transaction fee
-        $registrationFee = 40;
+        $registrationFee = 30;
         $transactionFee = $registrationFee * 0.01;
         $totalAmount = $registrationFee + $transactionFee;
         
@@ -32,12 +32,12 @@ class BecomeAgentController extends Controller
             'amount' => $registrationFee,
             'status' => 'pending',
             'type' => 'agent_fee',
-            'description' => 'Agent registration fee of GHS 40.00 (+ GHS ' . number_format($transactionFee, 2) . ' fee)',
+            'description' => 'API access fee of GHS 30.00 (+ GHS ' . number_format($transactionFee, 2) . ' fee)',
             'reference' => $reference,
         ]);
 
         // Calculate 1% transaction fee
-        $registrationFee = 40;
+        $registrationFee = 30;
         $transactionFee = $registrationFee * 0.01;
         $totalAmount = $registrationFee + $transactionFee;
         
