@@ -280,7 +280,7 @@ export default function Dashboard({ auth }: DashboardProps) {
 
       {/* Wallet Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-xs relative border border-gray-200 dark:border-gray-700">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl"
@@ -581,8 +581,10 @@ export default function Dashboard({ auth }: DashboardProps) {
                       type="tel"
                       placeholder="0240000000"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      maxLength={10}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/\s/g, '').replace(/\D/g, '').slice(0, 10);
+                        setPhoneNumber(cleaned);
+                      }}
                     />
                   </div>
                   <div>

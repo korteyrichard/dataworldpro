@@ -12,7 +12,7 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
-use App\Services\SmsService;
+use App\Services\MoolreSmsService;
 
 class AdminDashboardController extends Controller
 {
@@ -25,7 +25,7 @@ class AdminDashboardController extends Controller
         $products = Product::with('variants')->get();
         $orders = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }])->get();
+        }])->select('*')->get();
         
         // Transform orders to include variant information
         $orders = $orders->map(function($order) {
@@ -46,7 +46,7 @@ class AdminDashboardController extends Controller
         $todayUsers = User::whereDate('created_at', $today)->get();
         $todayOrders = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }])->whereDate('created_at', $today)->get();
+        }])->select('*')->whereDate('created_at', $today)->get();
         
         // Transform today's orders to include variant information
         $todayOrders = $todayOrders->map(function($order) {
@@ -73,6 +73,7 @@ class AdminDashboardController extends Controller
             'todayTransactions' => $todayTransactions,
             'jaybartOrderPusherEnabled' => (bool) Setting::get('jaybart_order_pusher_enabled', 1),
             'codecraftOrderPusherEnabled' => (bool) Setting::get('codecraft_order_pusher_enabled', 1),
+            'jescoOrderPusherEnabled' => (bool) Setting::get('jesco_order_pusher_enabled', 1),
         ]);
     }
 
@@ -152,7 +153,7 @@ class AdminDashboardController extends Controller
     {
         $orders = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }, 'user'])->latest();
+        }, 'user'])->select('*')->latest();
 
         if ($request->has('network') && $request->input('network') !== '') {
             $orders->where('network', 'like', '%' . $request->input('network') . '%');
@@ -160,6 +161,14 @@ class AdminDashboardController extends Controller
 
         if ($request->has('status') && $request->input('status') !== '') {
             $orders->where('status', $request->input('status'));
+        }
+
+        if ($request->has('order_id') && $request->input('order_id') !== '') {
+            $orders->where('id', $request->input('order_id'));
+        }
+
+        if ($request->has('beneficiary_number') && $request->input('beneficiary_number') !== '') {
+            $orders->where('beneficiary_number', 'like', '%' . $request->input('beneficiary_number') . '%');
         }
 
         $paginatedOrders = $orders->paginate(50);
@@ -178,10 +187,15 @@ class AdminDashboardController extends Controller
             return $order;
         });
 
+        $dailyTotalSales = Order::whereDate('created_at', today())->sum('total');
+
         return Inertia::render('Admin/Orders', [
             'orders' => $paginatedOrders,
             'filterNetwork' => $request->input('network', ''),
             'filterStatus' => $request->input('status', ''),
+            'searchOrderId' => $request->input('order_id', ''),
+            'searchBeneficiaryNumber' => $request->input('beneficiary_number', ''),
+            'dailyTotalSales' => $dailyTotalSales,
         ]);
     }
 
@@ -226,7 +240,7 @@ class AdminDashboardController extends Controller
             
             // Send SMS notification for refund
             if ($user->phone) {
-                $smsService = new SmsService();
+                $smsService = new MoolreSmsService();
                 $message = "Your order #{$order->id} has been cancelled and GHS " . number_format($refundAmount, 2) . " has been refunded to your wallet.";
                 $smsService->sendSms($user->phone, $message);
             }
@@ -234,8 +248,16 @@ class AdminDashboardController extends Controller
 
         // Send SMS if status changed to completed
         if ($request->status === 'completed' && $oldStatus !== 'completed' && $order->user->phone) {
-            $smsService = new SmsService();
-            $message = "Your order #{$order->id} for {$order->products->first()->name} to {$order->beneficiary_number} has been completed. Total: GHS " . number_format($order->total, 2);
+            $smsService = new MoolreSmsService();
+            $firstProduct = $order->products->first();
+            $dataSize = '';
+            if ($firstProduct->pivot->product_variant_id) {
+                $variant = \App\Models\ProductVariant::find($firstProduct->pivot->product_variant_id);
+                if ($variant && isset($variant->variant_attributes['size'])) {
+                    $dataSize = strtoupper($variant->variant_attributes['size']) . ' ';
+                }
+            }
+            $message = "Your order #{$order->id} for {$dataSize}{$firstProduct->name} to {$order->beneficiary_number} ({$order->network}) has been completed. Total: GHS " . number_format($order->total, 2);
             $smsService->sendSms($order->user->phone, $message);
         }
 
@@ -261,7 +283,7 @@ class AdminDashboardController extends Controller
 
         // Handle automatic refunds when orders are cancelled
         if ($request->status === 'cancelled') {
-            $smsService = new SmsService();
+            $smsService = new MoolreSmsService();
             foreach ($orders as $order) {
                 if ($order->status !== 'cancelled') {
                     $user = $order->user;
@@ -291,10 +313,18 @@ class AdminDashboardController extends Controller
 
         // Send SMS notifications if status changed to completed
         if ($request->status === 'completed') {
-            $smsService = new SmsService();
+            $smsService = new MoolreSmsService();
             foreach ($orders as $order) {
                 if ($order->status !== 'completed' && $order->user->phone) {
-                    $message = "Your order #{$order->id} has been completed. Total: GHS " . number_format($order->total, 2);
+                    $firstProduct = $order->products->first();
+                    $dataSize = '';
+                    if ($firstProduct->pivot->product_variant_id) {
+                        $variant = \App\Models\ProductVariant::find($firstProduct->pivot->product_variant_id);
+                        if ($variant && isset($variant->variant_attributes['size'])) {
+                            $dataSize = strtoupper($variant->variant_attributes['size']) . ' ';
+                        }
+                    }
+                    $message = "Your order #{$order->id} for {$dataSize}{$firstProduct->name} to {$order->beneficiary_number} ({$order->network}) has been completed. Total: GHS " . number_format($order->total, 2);
                     $smsService->sendSms($order->user->phone, $message);
                 }
             }
@@ -371,14 +401,28 @@ class AdminDashboardController extends Controller
     /**
      * Credit user's wallet.
      */
-    public function creditWallet(Request $request, User $user, SmsService $smsService)
+    public function creditWallet(Request $request, User $user, MoolreSmsService $smsService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:0.01',
         ]);
 
         $amount = $request->amount;
-        $user->increment('wallet_balance', $amount);
+        
+        DB::transaction(function () use ($user, $amount) {
+            // Update user wallet balance
+            $user->increment('wallet_balance', $amount);
+            
+            // Create transaction record
+            Transaction::create([
+                'user_id' => $user->id,
+                'amount' => $amount,
+                'status' => 'completed',
+                'type' => 'admin_credit',
+                'description' => 'Wallet credited by admin',
+                'reference' => 'ADMIN_CREDIT_' . time() . '_' . $user->id,
+            ]);
+        });
 
         // Send SMS notification
         $message = "Your wallet has been credited with GHS " . number_format($amount, 2) . ". New balance: GHS " . number_format($user->wallet_balance, 2);
@@ -390,7 +434,7 @@ class AdminDashboardController extends Controller
     /**
      * Debit user's wallet.
      */
-    public function debitWallet(Request $request, User $user, SmsService $smsService)
+    public function debitWallet(Request $request, User $user, MoolreSmsService $smsService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:0.01',
@@ -401,7 +445,21 @@ class AdminDashboardController extends Controller
         }
 
         $amount = $request->amount;
-        $user->decrement('wallet_balance', $amount);
+        
+        DB::transaction(function () use ($user, $amount) {
+            // Update user wallet balance
+            $user->decrement('wallet_balance', $amount);
+            
+            // Create transaction record
+            Transaction::create([
+                'user_id' => $user->id,
+                'amount' => $amount,
+                'status' => 'completed',
+                'type' => 'admin_debit',
+                'description' => 'Wallet debited by admin',
+                'reference' => 'ADMIN_DEBIT_' . time() . '_' . $user->id,
+            ]);
+        });
 
         // Send SMS notification
         $message = "Your wallet has been debited with GHS " . number_format($amount, 2) . ". New balance: GHS " . number_format($user->wallet_balance, 2);
@@ -597,7 +655,7 @@ class AdminDashboardController extends Controller
 
         $orders = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'beneficiary_number', 'product_variant_id');
-        }])->whereIn('id', $request->order_ids)->get();
+        }])->select('*')->whereIn('id', $request->order_ids)->get();
 
         $filename = 'orders_' . date('Y-m-d_H-i-s') . '.csv';
         
@@ -612,9 +670,24 @@ class AdminDashboardController extends Controller
             
             foreach ($orders as $order) {
                 foreach ($order->products as $product) {
+                    $volume = 0;
+                    
+                    // Get size from product variant if available
+                    if ($product->pivot->product_variant_id) {
+                        $variant = ProductVariant::find($product->pivot->product_variant_id);
+                        if ($variant && isset($variant->variant_attributes['size'])) {
+                            $volume = preg_replace('/gb/i', '', $variant->variant_attributes['size']);
+                        }
+                    }
+                    
+                    // Fallback to quantity if no variant size found
+                    if (!$volume) {
+                        $volume = $product->pivot->quantity ?? 0;
+                    }
+                    
                     fputcsv($file, [
                         $product->pivot->beneficiary_number ?? 'N/A',
-                        $product->pivot->quantity ?? 0
+                        $volume
                     ]);
                 }
             }
@@ -672,5 +745,17 @@ class AdminDashboardController extends Controller
         
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "CodeCraft order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle Jesco order pusher functionality.
+     */
+    public function toggleJescoOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('jesco_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Jesco order pusher {$status} successfully.");
     }
 }

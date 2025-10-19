@@ -22,6 +22,7 @@ interface Order {
   created_at: string;
   network?: string;
   beneficiary_number?: string;
+  order_pusher_status: 'disabled' | 'success' | 'failed' | null | undefined;
   products: Product[];
   user: {
     id: number;
@@ -50,6 +51,9 @@ interface AdminOrdersPageProps {
   auth: any;
   filterNetwork: string;
   filterStatus: string;
+  searchOrderId: string;
+  searchBeneficiaryNumber: string;
+  dailyTotalSales: number;
   [key: string]: any;
 }
 
@@ -59,11 +63,16 @@ export default function AdminOrders() {
     auth,
     filterNetwork: initialNetworkFilter,
     filterStatus: initialStatusFilter,
+    searchOrderId: initialSearchOrderId,
+    searchBeneficiaryNumber: initialSearchBeneficiaryNumber,
+    dailyTotalSales,
   } = usePage<AdminOrdersPageProps>().props;
 
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
-  const [networkFilter, setNetworkFilter] = useState(initialNetworkFilter);
-  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [networkFilter, setNetworkFilter] = useState(initialNetworkFilter || '');
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter || '');
+  const [searchOrderId, setSearchOrderId] = useState(initialSearchOrderId || '');
+  const [searchBeneficiaryNumber, setSearchBeneficiaryNumber] = useState(initialSearchBeneficiaryNumber || '');
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState('');
 
@@ -77,6 +86,23 @@ export default function AdminOrders() {
     setNetworkFilter(newFilters.network);
     setStatusFilter(newFilters.status);
     router.get(route('admin.orders'), newFilters, { preserveState: true, replace: true });
+  };
+
+  const handleSearch = (searchType: 'order_id' | 'beneficiary_number', value: string) => {
+    const searchParams: any = {};
+    if (searchType === 'order_id' && value) {
+      searchParams.order_id = value;
+    } else if (searchType === 'beneficiary_number' && value) {
+      searchParams.beneficiary_number = value;
+    }
+    
+    if (searchType === 'order_id') {
+      setSearchOrderId(value);
+    } else {
+      setSearchBeneficiaryNumber(value);
+    }
+    
+    router.get(route('admin.orders'), searchParams, { preserveState: true, replace: true });
   };
 
   const handleExpand = (orderId: number) => {
@@ -94,6 +120,15 @@ export default function AdminOrders() {
       'at (big packages)': 'bg-blue-100 text-blue-700',
     };
     return map[network.toLowerCase()] || 'bg-gray-200 text-gray-700';
+  };
+
+  const getOrderPusherStatusColor = (status: 'disabled' | 'success' | 'failed' | null | undefined) => {
+    const map: Record<string, string> = {
+      disabled: 'bg-gray-100 text-gray-700',
+      success: 'bg-green-100 text-green-700',
+      failed: 'bg-red-100 text-red-700',
+    };
+    return map[status || 'disabled'];
   };
 
   const handleDeleteOrder = (orderId: number) => {
@@ -147,6 +182,13 @@ export default function AdminOrders() {
     >
       <Head title="Admin Orders" />
       <div className="max-w-6xl mx-auto py-10 px-2 sm:px-4">
+        {/* Daily Total Sales */}
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 mb-6">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-green-700 dark:text-green-300">Daily Total Sales</h3>
+            <p className="text-2xl font-bold text-green-800 dark:text-green-200">GHS {dailyTotalSales}</p>
+          </div>
+        </div>
         {/* Bulk Actions */}
         {selectedOrders.length > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
@@ -208,8 +250,8 @@ export default function AdminOrders() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 mb-8">
-          <div className="flex flex-col gap-1 w-full md:w-1/2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Network</label>
             <select
               className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
@@ -223,7 +265,7 @@ export default function AdminOrders() {
             </select>
           </div>
 
-          <div className="flex flex-col gap-1 w-full md:w-1/2">
+          <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Status</label>
             <select
               className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
@@ -231,11 +273,33 @@ export default function AdminOrders() {
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
               <option value="">--select status--</option>
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
             </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Search by Order ID</label>
+            <input
+              type="text"
+              placeholder="Enter order ID"
+              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
+              value={searchOrderId}
+              onChange={(e) => handleSearch('order_id', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Search by Beneficiary Number</label>
+            <input
+              type="text"
+              placeholder="Enter phone number"
+              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
+              value={searchBeneficiaryNumber}
+              onChange={(e) => handleSearch('beneficiary_number', e.target.value)}
+            />
           </div>
         </div>
 
@@ -262,6 +326,7 @@ export default function AdminOrders() {
                   <th className="px-3 sm:px-5 py-3 sm:py-4">Date</th>
                   <th className="px-3 sm:px-5 py-3 sm:py-4">Network</th>
                   <th className="px-3 sm:px-5 py-3 sm:py-4">Status</th>
+                  <th className="px-3 sm:px-5 py-3 sm:py-4">API Status</th>
                   <th className="px-3 sm:px-5 py-3 sm:py-4">Total</th>
                   <th className="px-3 sm:px-5 py-3 sm:py-4 text-right">Actions</th>
                 </tr>
@@ -302,6 +367,9 @@ export default function AdminOrders() {
                             <option value="cancelled">Cancelled</option>
                         </select>
                       </td>
+                      <td className={`px-3 sm:px-5 py-3 sm:py-4 rounded ${getOrderPusherStatusColor(order.order_pusher_status || 'disabled')} font-medium text-xs`}>
+                        {order.order_pusher_status ? order.order_pusher_status.charAt(0).toUpperCase() + order.order_pusher_status.slice(1) : 'Disabled'}
+                      </td>
                       <td className="px-3 sm:px-5 py-3 sm:py-4 font-semibold">GHS {order.total}</td>
                       <td className="px-3 sm:px-5 py-3 sm:py-4 text-right space-x-2 sm:space-x-3">
                         <button
@@ -321,9 +389,10 @@ export default function AdminOrders() {
 
                     {expandedOrder === order.id && (
                       <tr className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
-                        <td colSpan={8} className="px-3 sm:px-6 py-4 sm:py-5">
+                        <td colSpan={9} className="px-3 sm:px-6 py-4 sm:py-5">
                           <div className="space-y-2 text-xs sm:text-sm">
                             <p><strong>Status:</strong> {order.status}</p>
+                            <p><strong>API Status:</strong> <span className={`px-2 py-1 rounded text-xs ${getOrderPusherStatusColor(order.order_pusher_status || 'disabled')}`}>{order.order_pusher_status ? order.order_pusher_status.charAt(0).toUpperCase() + order.order_pusher_status.slice(1) : 'Disabled'}</span></p>
                             <p><strong>Products:</strong></p>
                             <ul className="list-disc pl-4 sm:pl-5 space-y-1">
                               {order.products.map((product) => (

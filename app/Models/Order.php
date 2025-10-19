@@ -7,7 +7,7 @@ use Carbon\Carbon;
 
 class Order extends Model
 {
-    protected $fillable = ['user_id', 'total', 'status', 'beneficiary_number', 'network', 'reference_id'];
+    protected $fillable = ['user_id', 'total', 'status', 'beneficiary_number', 'network', 'reference_id', 'order_pusher_status'];
     
     protected $casts = [
         'created_at' => 'datetime:Y-m-d H:i:s',
@@ -22,6 +22,9 @@ class Order extends Model
             $model->created_at = Carbon::now('Africa/Accra');
             $model->updated_at = Carbon::now('Africa/Accra');
             $model->status = 'pending';
+            if (is_null($model->order_pusher_status)) {
+                $model->order_pusher_status = 'disabled';
+            }
         });
         
         static::updating(function ($model) {

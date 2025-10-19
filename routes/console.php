@@ -9,7 +9,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Schedule the order status sync command
-Schedule::command('orders:sync-status')->everyTenMinutes();
+Schedule::command('orders:sync-status')->everyFiveMinutes();
 
 // Complete bigtime and telecel orders older than 30 minutes
 Schedule::command('orders:complete-old')->everyTenMinutes();
+
+// Sync Jesco order statuses
+Schedule::command('orders:sync-jesco-status')->everyTenMinutes();

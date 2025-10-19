@@ -18,11 +18,15 @@ interface TransactionsPageProps extends PageProps {
 const typeLabels: Record<string, string> = {
   topup: 'Wallet Top Up',
   order: 'Order Purchase',
+  admin_credit: 'Admin Credit',
+  admin_debit: 'Admin Debit',
 };
 
 const typeColors: Record<string, string> = {
   topup: 'bg-green-100 text-green-800',
   order: 'bg-blue-100 text-blue-800',
+  admin_credit: 'bg-purple-100 text-purple-800',
+  admin_debit: 'bg-red-100 text-red-800',
 };
 
 export default function Transactions({ auth }: TransactionsPageProps) {

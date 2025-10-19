@@ -285,11 +285,45 @@ BIGTIME: 8`}
                     {/* Transactions API */}
                     <div className="mb-8">
                         <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Transactions API</h3>
-                        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                <strong>GET</strong> /api/v1/transaction-status
-                            </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Get transaction status</p>
+                        <div className="space-y-4">
+                            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                    <strong>GET</strong> /api/v1/transactions
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Get all orders for authenticated user</p>
+                                <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto mt-2">
+{`Response:
+{
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "user_id": 1,
+      "total": "10.00",
+      "status": "completed",
+      "beneficiary_number": "0241234567",
+      "network": "MTN",
+      "reference_id": "ORD123456",
+      "transactions": [...],
+      "products": [...],
+      "user": {...}
+    }
+  ]
+}`}
+                                </pre>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                    <strong>GET</strong> /api/v1/transactions/&#123;id&#125;
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Get single order by ID with transactions and products</p>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                    <strong>GET</strong> /api/v1/transaction-status (Legacy)
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Legacy endpoint - same as /api/v1/transactions</p>
+                            </div>
                         </div>
                     </div>
 

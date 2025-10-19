@@ -12,7 +12,7 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Schema;
-use App\Services\SmsService;
+use App\Services\MoolreSmsService;
 
 class DashboardController extends Controller
 {
@@ -218,7 +218,7 @@ class DashboardController extends Controller
                 
                 // Send SMS notification
                 if ($user->phone) {
-                    $smsService = new SmsService();
+                    $smsService = new MoolreSmsService();
                     $message = "Your wallet has been topped up with GHS " . number_format($actualAmount, 2) . ". New balance: GHS " . number_format($user->wallet_balance, 2);
                     $smsService->sendSms($user->phone, $message);
                 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 
 interface Product {
   id: number;
@@ -34,13 +34,25 @@ export default function OrdersPage() {
   const { orders, auth } = usePage<OrdersPageProps>().props;
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [networkFilter, setNetworkFilter] = useState('');
+  const [orderIdSearch, setOrderIdSearch] = useState('');
+  const [beneficiarySearch, setBeneficiarySearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
-  // Extract unique networks for filter dropdown
+  // Extract unique networks and statuses for filter dropdowns
   const networks = Array.from(new Set(orders.map(o => o.network).filter(Boolean)));
+  const statuses = Array.from(new Set(orders.map(o => o.status).filter(Boolean)));
 
-  const filteredOrders = networkFilter
-    ? orders.filter(order => order.network === networkFilter)
-    : orders;
+  const filteredOrders = orders.filter(order => {
+    const matchesNetwork = !networkFilter || order.network === networkFilter;
+    const matchesOrderId = !orderIdSearch || order.id.toString().includes(orderIdSearch);
+    const matchesBeneficiary = !beneficiarySearch || 
+      order.beneficiary_number?.toLowerCase().includes(beneficiarySearch.toLowerCase()) ||
+      order.products.some(product => 
+        product.pivot.beneficiary_number?.toLowerCase().includes(beneficiarySearch.toLowerCase())
+      );
+    const matchesStatus = !statusFilter || order.status === statusFilter;
+    return matchesNetwork && matchesOrderId && matchesBeneficiary && matchesStatus;
+  });
 
   const handleExpand = (orderId: number) => {
     setExpandedOrder(expandedOrder === orderId ? null : orderId);
@@ -58,18 +70,55 @@ export default function OrdersPage() {
     <DashboardLayout user={auth?.user} header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">My Orders</h2>}>
       <Head title="Orders" />
       <div className="py-8 max-w-4xl mx-auto">
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <label className="font-medium">Filter by Network:</label>
-          <select
-            className="border rounded px-3 py-2 w-full sm:w-60"
-            value={networkFilter}
-            onChange={e => setNetworkFilter(e.target.value)}
-          >
-            <option value="" className='text-slate-800'>All Networks</option>
-            {networks.map(network => (
-              <option key={network} value={network} className='text-slate-700'>{network}</option>
-            ))}
-          </select>
+        <div className="mb-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Search by Order ID:</label>
+              <input
+                type="text"
+                className="border rounded px-3 py-2 w-full"
+                placeholder="Enter order ID..."
+                value={orderIdSearch}
+                onChange={e => setOrderIdSearch(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Search by Beneficiary Number:</label>
+              <input
+                type="text"
+                className="border rounded px-3 py-2 w-full"
+                placeholder="Enter beneficiary number..."
+                value={beneficiarySearch}
+                onChange={e => setBeneficiarySearch(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Filter by Network:</label>
+              <select
+                className="border rounded px-3 py-2 w-full"
+                value={networkFilter}
+                onChange={e => setNetworkFilter(e.target.value)}
+              >
+                <option value="" className='text-slate-800'>All Networks</option>
+                {networks.map(network => (
+                  <option key={network} value={network} className='text-slate-700'>{network}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Filter by Status:</label>
+              <select
+                className="border rounded px-3 py-2 w-full"
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+              >
+                <option value="" className='text-slate-800'>All Statuses</option>
+                {statuses.map(status => (
+                  <option key={status} value={status} className='text-slate-700'>{status}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
         {filteredOrders.length === 0 ? (
           <div>No orders found.</div>

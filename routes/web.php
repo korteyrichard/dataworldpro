@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Wallet balance route
     Route::post('/dashboard/wallet/add', [DashboardController::class, 'addToWallet'])->name('dashboard.wallet.add');
     Route::get('/wallet/callback', [DashboardController::class, 'handleWalletCallback'])->name('wallet.callback');
+    Route::post('/dashboard/wallet/verify-payment', [WalletController::class, 'verifyPayment'])->name('dashboard.wallet.verify');
     
     // Bundle sizes API
     Route::get('/api/bundle-sizes', [DashboardController::class, 'getBundleSizes'])->name('api.bundle-sizes');
@@ -92,6 +93,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->name('admin.')->group(fun
     Route::put('admin/afa-orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateAfaOrderStatus'])->name('afa.orders.updateStatus');
     Route::post('admin/toggle-jaybart-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJaybartOrderPusher'])->name('toggle.jaybart.order.pusher');
     Route::post('admin/toggle-codecraft-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftOrderPusher'])->name('toggle.codecraft.order.pusher');
+    Route::post('admin/toggle-jesco-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJescoOrderPusher'])->name('toggle.jesco.order.pusher');
 });
 
 // Paystack payment routes

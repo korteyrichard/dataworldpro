@@ -6,11 +6,11 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use App\Services\SmsService;
+use App\Services\MoolreSmsService;
 
 class CodeCraftOrderPusherService
 {
-    private $apiKey = '';
+    private $apiKey = '250905051915-|9zeDO-YdLmuU-rCa?vb-TqFnqX-TcWFy3';
     private $clientEmail = 'ammababaah@gmail.com';
 
     public function pushOrderToApi(Order $order)
@@ -19,6 +19,8 @@ class CodeCraftOrderPusherService
         
         $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
         Log::info('Order has items', ['count' => $items->count()]);
+        
+        $processedItems = 0;
 
         foreach ($items as $item) {
             Log::info('Processing item', ['name' => $item->name]);
@@ -38,6 +40,8 @@ class CodeCraftOrderPusherService
                 ]);
                 continue;
             }
+            
+            $processedItems++;
 
             $referenceId = $this->generateReferenceId();
             $endpoint = $this->getEndpoint($network);
@@ -73,7 +77,10 @@ class CodeCraftOrderPusherService
                 ]);
 
                 if ($statusCode == 200) {
-                    $updateData = ['reference_id' => $referenceId];
+                    $updateData = [
+                        'reference_id' => $referenceId,
+                        'order_pusher_status' => 'success'
+                    ];
                     
                     if ($network === 'AT') {
                         $updateData['status'] = 'completed';
@@ -83,13 +90,14 @@ class CodeCraftOrderPusherService
                     
                     // Send SMS if Ishare order completed and user has phone
                     if ($network === 'AT' && $order->user && $order->user->phone) {
-                        $smsService = new SmsService();
+                        $smsService = new MoolreSmsService();
                         $message = "Your order #{$order->id} for {$order->products->first()->name} to {$item->pivot->beneficiary_number} has been completed. Total: GHS " . number_format($order->total, 2);
                         $smsService->sendSms($order->user->phone, $message);
                     }
                     
                     Log::info('Order sent successfully to CodeCraft', ['reference_id' => $referenceId]);
                 } else {
+                    $order->update(['order_pusher_status' => 'failed']);
                     $message = $responseData['message'] ?? 'Unknown error';
                     Log::error('CodeCraft API Error', [
                         'status_code' => $statusCode,
@@ -99,11 +107,17 @@ class CodeCraftOrderPusherService
                 }
 
             } catch (\Exception $e) {
+                $order->update(['order_pusher_status' => 'failed']);
                 Log::error('CodeCraft API Exception', [
                     'message' => $e->getMessage(),
                     'reference_id' => $referenceId
                 ]);
             }
+        }
+        
+        // If no items were processed, keep the status as disabled
+        if ($processedItems === 0) {
+            Log::info('No items were processed for order, keeping status as disabled', ['order_id' => $order->id]);
         }
     }
     

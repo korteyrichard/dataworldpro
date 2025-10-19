@@ -11,16 +11,34 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Services\OrderPusherService;
 use App\Services\CodeCraftOrderPusherService;
+use App\Services\JescoOrderPusherService;
 use App\Models\Setting;
 
 class OrdersController extends Controller
 {
     // Display a listing of the user's orders
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with(['products' => function($query) {
+        $query = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }])->where('user_id', Auth::id())->latest()->get();
+        }])->where('user_id', Auth::id());
+
+        // Search by order ID
+        if ($request->filled('order_id')) {
+            $query->where('id', $request->order_id);
+        }
+
+        // Search by beneficiary number
+        if ($request->filled('beneficiary_number')) {
+            $query->where('beneficiary_number', 'like', '%' . $request->beneficiary_number . '%');
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $orders = $query->latest()->get();
         
         // Transform orders to include variant information
         $orders = $orders->map(function($order) {
@@ -127,23 +145,33 @@ class OrdersController extends Controller
             // Push orders to external APIs based on network and individual service settings
             $jaybartEnabled = (bool) Setting::get('jaybart_order_pusher_enabled', 1);
             $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);
+            $jescoEnabled = (bool) Setting::get('jesco_order_pusher_enabled', 1);
             
             foreach ($createdOrders as $order) {
                 try {
-                    if (strtolower($order->network) === 'mtn' && $jaybartEnabled) {
-                        $mtnOrderPusher = new OrderPusherService();
-                        $mtnOrderPusher->pushOrderToApi($order);
-                        Log::info('Order pushed to Jaybart API', ['orderId' => $order->id, 'network' => $order->network]);
+                    if (strtolower($order->network) === 'mtn') {
+                        if ($jaybartEnabled) {
+                            $mtnOrderPusher = new OrderPusherService();
+                            $mtnOrderPusher->pushOrderToApi($order);
+                            Log::info('Order pushed to Jaybart API', ['orderId' => $order->id, 'network' => $order->network]);
+                        }
+                        if ($jescoEnabled) {
+                            $jescoOrderPusher = new JescoOrderPusherService();
+                            $jescoOrderPusher->pushOrderToApi($order);
+                            Log::info('Order pushed to Jesco API', ['orderId' => $order->id, 'network' => $order->network]);
+                        }
+                        if (!$jaybartEnabled && !$jescoEnabled) {
+                            Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
+                        }
                     } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && $codecraftEnabled) {
                         $codeCraftOrderPusher = new CodeCraftOrderPusherService();
                         $codeCraftOrderPusher->pushOrderToApi($order);
                         Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);
                     } else {
-                        $service = strtolower($order->network) === 'mtn' ? 'Jaybart' : 'CodeCraft';
-                        $enabled = strtolower($order->network) === 'mtn' ? $jaybartEnabled : $codecraftEnabled;
-                        Log::info('Order pusher disabled for service', ['orderId' => $order->id, 'network' => $order->network, 'service' => $service, 'enabled' => $enabled]);
+                        Log::info('No enabled order pusher for network', ['orderId' => $order->id, 'network' => $order->network]);
                     }
                 } catch (\Exception $e) {
+                    $order->update(['order_pusher_status' => 'failed']);
                     Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
                 }
             }

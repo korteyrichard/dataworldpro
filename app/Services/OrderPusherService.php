@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 class OrderPusherService
 {
     private $baseUrl = 'https://agent.jaybartservices.com/api/v1';
-    private $apiKey = '';
+    private $apiKey = 'b2fe77274d245a52c7bf4c03ba96f46c2bed9be3';
 
     public function pushOrderToApi(Order $order)
     {
@@ -17,6 +17,8 @@ class OrderPusherService
         
         $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
         Log::info('Order has items', ['count' => $items->count()]);
+        
+        $processedItems = 0;
 
         foreach ($items as $item) {
             Log::info('Processing item', ['name' => $item->name]);
@@ -49,6 +51,8 @@ class OrderPusherService
                 ]);
                 continue;
             }
+            
+            $processedItems++;
 
             $endpoint = $this->baseUrl . '/buy-other-package';
             $payload = [
@@ -96,7 +100,10 @@ class OrderPusherService
                         ]);
                         
                         // Try to update the order and check if it was successful
-                        $updateResult = $order->update(['reference_id' => $transactionCode]);
+                        $updateResult = $order->update([
+                            'reference_id' => $transactionCode,
+                            'order_pusher_status' => 'success'
+                        ]);
                         
                         // Refresh the order from database to verify the update
                         $order->refresh();
@@ -105,21 +112,11 @@ class OrderPusherService
                             'order_id' => $order->id,
                             'update_successful' => $updateResult,
                             'reference_id_after_update' => $order->reference_id,
-                            'transaction_code_matches' => $order->reference_id === $transactionCode
+                            'transaction_code_matches' => $order->reference_id === $transactionCode,
+                            'order_pusher_status' => $order->order_pusher_status
                         ]);
-                        
-                        // Update order status to processing since we have a transaction
-                        // if ($order->status === 'pending') {
-                        //     $statusUpdateResult = $order->update(['status' => 'processing']);
-                        //     $order->refresh();
-                            
-                        //     Log::info('Order status update result', [
-                        //         'order_id' => $order->id,
-                        //         'status_update_successful' => $statusUpdateResult,
-                        //         'current_status' => $order->status
-                        //     ]);
-                        // }
                     } else {
+                        $order->update(['order_pusher_status' => 'failed']);
                         Log::warning('API response indicates failure or missing transaction code', [
                             'order_id' => $order->id,
                             'response' => $responseData,
@@ -128,6 +125,7 @@ class OrderPusherService
                         ]);
                     }
                 } else {
+                    $order->update(['order_pusher_status' => 'failed']);
                     Log::error('API call failed', [
                         'order_id' => $order->id,
                         'status_code' => $response->status(),
@@ -136,11 +134,17 @@ class OrderPusherService
                 }
 
             } catch (\Exception $e) {
+                $order->update(['order_pusher_status' => 'failed']);
                 Log::error('API Error', [
                     'order_id' => $order->id,
                     'message' => $e->getMessage()
                 ]);
             }
+        }
+        
+        // If no items were processed, keep the status as disabled
+        if ($processedItems === 0) {
+            Log::info('No items were processed for order, keeping status as disabled', ['order_id' => $order->id]);
         }
     }
     

@@ -10,6 +10,7 @@ interface Transaction {
   status: string;
   type: string;
   description: string;
+  reference: string;
   created_at: string;
 }
 
@@ -29,13 +30,14 @@ interface WalletPageProps extends PageProps {
       active: boolean;
     }[];
   };
+  pendingTransactions: Transaction[];
 }
 
 
 
 
 
-export default function Wallet({ auth, transactions }: WalletPageProps) {
+export default function Wallet({ auth, transactions, pendingTransactions }: WalletPageProps) {
      
      
 
@@ -46,6 +48,7 @@ export default function Wallet({ auth, transactions }: WalletPageProps) {
       const [addAmount, setAddAmount] = useState('');
       const [isAdding, setIsAdding] = useState(false);
       const [addError, setAddError] = useState<string | null>(null);
+      const [verifyingTransactions, setVerifyingTransactions] = useState<Set<number>>(new Set());
 
 
 
@@ -53,6 +56,49 @@ export default function Wallet({ auth, transactions }: WalletPageProps) {
 
   const handleTopUp = () => {
     router.visit('/dashboard/wallet/add');
+  };
+
+  const handleVerifyPayment = async (transactionId: number, reference: string) => {
+    console.log('Starting verification for:', { transactionId, reference });
+    setVerifyingTransactions(prev => new Set(prev).add(transactionId));
+    
+    try {
+      const response = await fetch('/dashboard/wallet/verify-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ reference }),
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (data.success) {
+        alert(data.message);
+        router.reload();
+      } else {
+        alert(data.message || 'Verification failed');
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      alert('Error verifying payment: ' + error.message);
+    } finally {
+      setVerifyingTransactions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(transactionId);
+        return newSet;
+      });
+    }
   };
 
   const user = auth.user;
@@ -69,7 +115,7 @@ export default function Wallet({ auth, transactions }: WalletPageProps) {
       <Head title="Wallet" />
 
      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-xs relative border border-gray-200 dark:border-gray-700">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl"
@@ -112,7 +158,7 @@ export default function Wallet({ auth, transactions }: WalletPageProps) {
             >
               <input
                 type="number"
-                min="10.00"
+                min="1"
                 step="0.01"
                 className="rounded px-2 py-2 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
                 placeholder="Amount"
@@ -158,7 +204,7 @@ export default function Wallet({ auth, transactions }: WalletPageProps) {
         {/* Transactions Table */}
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
-            Wallet Top-up History
+            Wallet Transaction History
           </h3>
 
           <div className="w-full overflow-x-auto">
@@ -167,18 +213,20 @@ export default function Wallet({ auth, transactions }: WalletPageProps) {
                 <tr>
                   <th className="p-3 border whitespace-nowrap">ID</th>
                   <th className="p-3 border whitespace-nowrap">Amount</th>
+                  <th className="p-3 border whitespace-nowrap">Type</th>
                   <th className="p-3 border whitespace-nowrap">Status</th>
                   <th className="p-3 border whitespace-nowrap">Date</th>
+                  <th className="p-3 border whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.data.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="p-4 text-center text-gray-500 dark:text-gray-400"
                     >
-                      No wallet top-up transactions found.
+                      No wallet transactions found.
                     </td>
                   </tr>
                 ) : (
@@ -186,9 +234,23 @@ export default function Wallet({ auth, transactions }: WalletPageProps) {
                     <tr key={tx.id} className="border-t dark:border-gray-700">
                       <td className="p-3 border">{tx.id}</td>
                       <td className="p-3 border">GHS {Number(tx.amount).toFixed(2)}</td>
+                      <td className="p-3 border capitalize">{tx.type.replace('_', ' ')}</td>
                       <td className="p-3 border">{tx.status}</td>
                       <td className="p-3 border">
                         {new Date(tx.created_at).toLocaleString()}
+                      </td>
+                      <td className="p-3 border">
+                        {tx.status === 'pending' ? (
+                          <button
+                            onClick={() => handleVerifyPayment(tx.id, tx.reference)}
+                            disabled={verifyingTransactions.has(tx.id)}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1 rounded text-xs"
+                          >
+                            {verifyingTransactions.has(tx.id) ? 'Verifying...' : 'Verify'}
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
                       </td>
                     </tr>
                   ))

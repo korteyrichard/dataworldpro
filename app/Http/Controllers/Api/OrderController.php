@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use App\Services\OrderPusherService;
 use App\Services\CodeCraftOrderPusherService;
+use App\Services\JescoOrderPusherService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
 
@@ -78,14 +79,30 @@ class OrderController extends Controller
                 'product_variant_id' => $variant->id
             ]);
 
+            // Create transaction record for sales tracking
+            \App\Models\Transaction::create([
+                'user_id' => auth()->id(),
+                'order_id' => $order->id,
+                'amount' => $variant->price,
+                'status' => 'completed',
+                'type' => 'order',
+                'description' => 'API order placed for ' . $product->network . ' data/airtime.',
+            ]);
+
             return $order;
         });
         
         // Push order to external API based on network (if enabled)
         try {
-            if (strtolower($order->network) === 'mtn' && Setting::get('jaybart_order_pusher_enabled', 1)) {
-                $mtnOrderPusher = new OrderPusherService();
-                $mtnOrderPusher->pushOrderToApi($order);
+            if (strtolower($order->network) === 'mtn') {
+                if (Setting::get('jaybart_order_pusher_enabled', 1)) {
+                    $mtnOrderPusher = new OrderPusherService();
+                    $mtnOrderPusher->pushOrderToApi($order);
+                }
+                if (Setting::get('jesco_order_pusher_enabled', 1)) {
+                    $jescoOrderPusher = new JescoOrderPusherService();
+                    $jescoOrderPusher->pushOrderToApi($order);
+                }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && Setting::get('codecraft_order_pusher_enabled', 1)) {
                 $codeCraftOrderPusher = new CodeCraftOrderPusherService();
                 $codeCraftOrderPusher->pushOrderToApi($order);

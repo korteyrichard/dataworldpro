@@ -50,11 +50,17 @@ const typeLabels: Record<string, string> = {
   order: 'Order Purchase',
   agent_fee: 'Agent Fee',
   refund: 'Refund',
+  admin_credit: 'Admin Credit',
+  admin_debit: 'Admin Debit',
 };
 
 const typeColors: Record<string, string> = {
   topup: 'bg-green-100 text-green-800',
   order: 'bg-blue-100 text-blue-800',
+  agent_fee: 'bg-orange-100 text-orange-800',
+  refund: 'bg-yellow-100 text-yellow-800',
+  admin_credit: 'bg-purple-100 text-purple-800',
+  admin_debit: 'bg-red-100 text-red-800',
 };
 
 export default function AdminTransactions() {
@@ -83,6 +89,8 @@ export default function AdminTransactions() {
             <option value="order" className='text-slate-600'>Order Purchases</option>
             <option value="agent_fee" className='text-slate-600'>Agent Fees</option>
             <option value="refund" className='text-slate-600'>Refunds</option>
+            <option value="admin_credit" className='text-slate-600'>Admin Credits</option>
+            <option value="admin_debit" className='text-slate-600'>Admin Debits</option>
           </select>
         </div>
         {transactions.data.length === 0 ? (
@@ -107,7 +115,9 @@ export default function AdminTransactions() {
                     <td className="px-4 py-3 text-sm">{transaction.user?.name || transaction.order?.user?.name}</td>
                     <td className="px-4 py-3 text-sm">${transaction.amount}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold  ${typeColors[transaction.type]}`}>{typeLabels[transaction.type]}</span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${typeColors[transaction.type] || 'bg-gray-100 text-gray-800'}`}>
+                        {typeLabels[transaction.type] || transaction.type.replace('_', ' ').toUpperCase()}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${

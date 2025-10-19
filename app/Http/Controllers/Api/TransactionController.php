@@ -3,47 +3,47 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Get all orders for authenticated user
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $orders = Order::with(['transactions', 'user', 'products'])
+            ->where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $orders
+        ]);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Get single order by ID
      */
-    public function store(Request $request)
+    public function show(Request $request, $id)
     {
-        //
-    }
+        $order = Order::with(['transactions', 'user', 'products'])
+            ->where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->first();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order not found'
+            ], 404);
+        }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json([
+            'success' => true,
+            'data' => $order
+        ]);
     }
 }

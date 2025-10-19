@@ -57,7 +57,11 @@ Route::prefix('v1')->group(function () {
 
 
 
-        // TRANSACTIONS
+        // TRANSACTIONS (Orders)
+        Route::get('/transactions', [TransactionController::class, 'index']);
+        Route::get('/transactions/{id}', [TransactionController::class, 'show']);
+        
+        // Legacy endpoint
         Route::get('/transaction-status', [TransactionController::class, 'index']);
 
         // Logout route - revoke current token

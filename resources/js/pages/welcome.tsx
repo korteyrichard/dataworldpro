@@ -109,7 +109,7 @@ export default function Welcome() {
                                             Login
                                         </Link>
                                         <a
-                                            href="https://whatsapp.com/channel/0029VbBdG8d2ER6aWSFGSr28"
+                                            href="https://chat.whatsapp.com/JC5sasRR1eFLNY5DXF5l7S?mode=ems_share_c"
                                             className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-yellow-600 hover:to-yellow-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
                                             onClick={() => setNavOpen(false)}
                                         >
@@ -151,7 +151,7 @@ export default function Welcome() {
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                             {auth.user ? (
                                 <Link
-                                    href={auth.user.role === 'agent' ? route('dashboard') : auth.user.role === 'admin' ? route('admin.dashboard') : route('become_an_agent')}
+                                    href={auth.user.role === 'admin' ? route('admin.dashboard') :  route('dashboard')}
                                     className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-bold text-lg rounded-full hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 transform hover:scale-105"
                                 >
                                     Go to Dashboard

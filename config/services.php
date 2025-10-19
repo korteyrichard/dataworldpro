@@ -40,4 +40,12 @@ return [
         'sender_id' => env('BULKCLIX_SENDER_ID'),
     ],
 
+    'moolre' => [
+        'api_key' => env('MOOLRE_API_KEY'),
+    ],
+
+    'jesco' => [
+        'api_key' => env('JESCO_API_KEY'),
+    ],
+
 ];

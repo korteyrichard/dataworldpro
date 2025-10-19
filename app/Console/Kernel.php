@@ -13,8 +13,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        Commands\UpdatePendingOrdersStatus::class,
-        Commands\CompleteOldOrders::class,
+        //
     ];
 
     /**
@@ -22,11 +21,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Check every minute for orders that need to be updated
-        $schedule->command('orders:update-pending-status')->everyMinute();
-        
-        // Complete old bigtime and telecel orders every 5 minutes
-        $schedule->command('orders:complete-old')->everyFiveMinutes();
+        // Schedules are defined in routes/console.php
     }
 
     /**

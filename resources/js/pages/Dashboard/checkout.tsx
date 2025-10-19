@@ -9,8 +9,10 @@ interface CartItem {
     id: number;
     name: string;
     price: number;
+    network: string;
   };
   quantity: string;
+  beneficiary_number: string;
 }
 
 interface CheckoutPageProps {
@@ -90,12 +92,30 @@ export default function CheckoutPage() {
             <h4 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Order Summary</h4>
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
               {cartItems.map(item => (
-                <li key={item.id} className="py-4 flex items-center justify-between">
-                  <div>
-                    <span className="font-medium text-gray-900 dark:text-gray-100">{item.product?.name || 'Unknown Product'}</span>
-                    <span className="ml-2 text-gray-500 dark:text-gray-400">({item.quantity})</span>
+                <li key={item.id} className="py-6 flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{item.product?.name || 'Data Bundle'}</span>
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-semibold rounded-full">
+                        {item.product?.network || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Size:</span>
+                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
+                          {item.quantity}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Beneficiary:</span>
+                        <span className="font-mono text-gray-800 dark:text-gray-200">
+                          {item.beneficiary_number || 'Not specified'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="font-semibold text-indigo-600 dark:text-indigo-400">
+                  <div className="font-semibold text-indigo-600 dark:text-indigo-400 text-lg">
                     GHS {Number(item.product?.price || 0).toFixed(2)}
                   </div>
                 </li>

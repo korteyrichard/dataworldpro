@@ -6,7 +6,7 @@ use App\Models\Order;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use App\Services\SmsService;
+use App\Services\MoolreSmsService;
 
 class CompleteOldOrders extends Command
 {
@@ -17,7 +17,10 @@ class CompleteOldOrders extends Command
     {
         $thirtyMinutesAgo = Carbon::now()->subMinutes(30);
         
-        $orders = Order::whereIn('status', ['pending', 'processing'])
+        $orders = Order::with(['user', 'products' => function($query) {
+                $query->withPivot('beneficiary_number', 'product_variant_id');
+            }])
+            ->whereIn('status', ['pending', 'processing'])
             ->where('created_at', '<=', $thirtyMinutesAgo)
             ->whereHas('products', function ($query) {
                 $query->where(function ($q) {
@@ -27,7 +30,7 @@ class CompleteOldOrders extends Command
             })
             ->get();
 
-        $smsService = new SmsService();
+        $smsService = new MoolreSmsService();
         
         foreach ($orders as $order) {
             $order->update(['status' => 'completed']);
@@ -36,7 +39,14 @@ class CompleteOldOrders extends Command
             if ($order->user && $order->user->phone) {
                 $firstProduct = $order->products->first();
                 $beneficiaryNumber = $firstProduct->pivot->beneficiary_number ?? 'N/A';
-                $message = "Your order #{$order->id} for {$firstProduct->name} to {$beneficiaryNumber} has been completed. Total: GHS " . number_format($order->total, 2);
+                $dataSize = '';
+                if ($firstProduct->pivot->product_variant_id) {
+                    $variant = \App\Models\ProductVariant::find($firstProduct->pivot->product_variant_id);
+                    if ($variant && isset($variant->variant_attributes['size'])) {
+                        $dataSize = strtoupper($variant->variant_attributes['size']) . ' ';
+                    }
+                }
+                $message = "Your order #{$order->id} for {$dataSize}{$firstProduct->name} to {$beneficiaryNumber} ({$order->network}) has been completed. Total: GHS " . number_format($order->total, 2);
                 $smsService->sendSms($order->user->phone, $message);
             }
             

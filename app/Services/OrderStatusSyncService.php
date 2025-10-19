@@ -3,17 +3,20 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Services\MoolreSmsService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class OrderStatusSyncService
 {
     private $codeCraftAgentEmail = 'ammababaah@gmail.com';
-    private $mtnApiKey = '';
+    private $mtnApiKey = 'b2fe77274d245a52c7bf4c03ba96f46c2bed9be3';
 
     public function syncOrderStatuses()
     {
-        $processingOrders = Order::whereIn('status', ['pending', 'processing'])->get();
+        $processingOrders = Order::with(['user', 'products' => function($query) {
+            $query->withPivot('product_variant_id');
+        }])->whereIn('status', ['pending', 'processing'])->get();
         
         foreach ($processingOrders as $order) {
             try {
@@ -82,13 +85,30 @@ class OrderStatusSyncService
                 ]);
                 
                 if ($newStatus && $newStatus !== $order->status) {
+                    $oldStatus = $order->status;
                     $updateResult = $order->update(['status' => $newStatus]);
                     Log::info('MTN order status updated', [
                         'orderId' => $order->id, 
-                        'oldStatus' => $order->status, 
+                        'oldStatus' => $oldStatus, 
                         'newStatus' => $newStatus,
                         'update_successful' => $updateResult
                     ]);
+                    
+                    // Send SMS if status changed to completed
+                    if ($newStatus === 'completed' && $oldStatus !== 'completed' && $order->user && $order->user->phone) {
+                        $smsService = new MoolreSmsService();
+                        $firstProduct = $order->products->first();
+                        $dataSize = '';
+                        if ($firstProduct && $firstProduct->pivot->product_variant_id) {
+                            $variant = \App\Models\ProductVariant::find($firstProduct->pivot->product_variant_id);
+                            if ($variant && isset($variant->variant_attributes['size'])) {
+                                $dataSize = strtoupper($variant->variant_attributes['size']) . ' ';
+                            }
+                        }
+                        $productName = $firstProduct ? $firstProduct->name : 'Data/Airtime';
+                        $message = "Your order #{$order->id} for {$dataSize}{$productName} to {$order->beneficiary_number} ({$order->network}) has been completed. Total: GHS " . number_format($order->total, 2);
+                        $smsService->sendSms($order->user->phone, $message);
+                    }
                 } else {
                     Log::info('MTN order status unchanged', [
                         'order_id' => $order->id,
@@ -194,13 +214,30 @@ class OrderStatusSyncService
                 ]);
                 
                 if ($newStatus && $newStatus !== $order->status) {
+                    $oldStatus = $order->status;
                     $updateResult = $order->update(['status' => $newStatus]);
                     Log::info('CodeCraft order status updated', [
                         'orderId' => $order->id, 
-                        'oldStatus' => $order->status, 
+                        'oldStatus' => $oldStatus, 
                         'newStatus' => $newStatus,
                         'update_successful' => $updateResult
                     ]);
+                    
+                    // Send SMS if status changed to completed
+                    if ($newStatus === 'completed' && $oldStatus !== 'completed' && $order->user && $order->user->phone) {
+                        $smsService = new MoolreSmsService();
+                        $firstProduct = $order->products->first();
+                        $dataSize = '';
+                        if ($firstProduct && $firstProduct->pivot->product_variant_id) {
+                            $variant = \App\Models\ProductVariant::find($firstProduct->pivot->product_variant_id);
+                            if ($variant && isset($variant->variant_attributes['size'])) {
+                                $dataSize = strtoupper($variant->variant_attributes['size']) . ' ';
+                            }
+                        }
+                        $productName = $firstProduct ? $firstProduct->name : 'Data/Airtime';
+                        $message = "Your order #{$order->id} for {$dataSize}{$productName} to {$order->beneficiary_number} ({$order->network}) has been completed. Total: GHS " . number_format($order->total, 2);
+                        $smsService->sendSms($order->user->phone, $message);
+                    }
                 } else {
                     Log::info('CodeCraft order status unchanged', [
                         'order_id' => $order->id,
