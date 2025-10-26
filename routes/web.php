@@ -66,34 +66,41 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Admin routes - This is the correct group with role middleware
-Route::middleware(['auth', 'verified', 'role:admin'])->name('admin.')->group(function () {
-    Route::get('admin/dashboard', [\App\Http\Controllers\AdminDashboardController::class, 'index'])->name('dashboard');
-    Route::get('admin/users', [\App\Http\Controllers\AdminDashboardController::class, 'users'])->name('users');
-    Route::post('admin/users', [\App\Http\Controllers\AdminDashboardController::class, 'storeUser'])->name('users.store');
-    Route::put('admin/users/{user}', [\App\Http\Controllers\AdminDashboardController::class, 'updateUserRole'])->name('users.updateRole');
-    Route::delete('admin/users/{user}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteUser'])->name('users.delete');
-    Route::post('admin/users/{user}/credit', [\App\Http\Controllers\AdminDashboardController::class, 'creditWallet'])->name('users.credit');
-    Route::post('admin/users/{user}/debit', [\App\Http\Controllers\AdminDashboardController::class, 'debitWallet'])->name('users.debit');
-    Route::get('admin/products', [\App\Http\Controllers\AdminDashboardController::class, 'products'])->name('products');
-    Route::post('admin/products', [\App\Http\Controllers\AdminDashboardController::class, 'storeProduct'])->name('products.store');
-    Route::put('admin/products/{product}', [\App\Http\Controllers\AdminDashboardController::class, 'updateProduct'])->name('products.update');
-    Route::delete('admin/products/{product}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteProduct'])->name('products.delete');
-    Route::get('admin/variations', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'index'])->name('variations');
-    Route::post('admin/variation-attributes', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'store'])->name('variation-attributes.store');
-    Route::put('admin/variation-attributes/{variationAttribute}', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'update'])->name('variation-attributes.update');
-    Route::delete('admin/variation-attributes/{variationAttribute}', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'destroy'])->name('variation-attributes.delete');
-    Route::get('admin/orders', [\App\Http\Controllers\AdminDashboardController::class, 'orders'])->name('orders');
-    Route::delete('admin/orders/{order}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteOrder'])->name('orders.delete');
-    Route::put('admin/orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateOrderStatus'])->name('orders.updateStatus');
-    Route::put('admin/orders/bulk-status', [\App\Http\Controllers\AdminDashboardController::class, 'bulkUpdateOrderStatus'])->name('orders.bulkUpdateStatus');
-    Route::get('admin/transactions', [\App\Http\Controllers\AdminDashboardController::class, 'transactions'])->name('transactions');
-    Route::get('admin/users/{user}/transactions', [\App\Http\Controllers\AdminDashboardController::class, 'userTransactions'])->name('users.transactions');
-    Route::post('admin/orders/export', [\App\Http\Controllers\AdminDashboardController::class, 'exportOrders'])->name('orders.export');
-    Route::get('admin/afa-orders', [\App\Http\Controllers\AdminDashboardController::class, 'afaOrders'])->name('afa-orders');
-    Route::put('admin/afa-orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateAfaOrderStatus'])->name('afa.orders.updateStatus');
-    Route::post('admin/toggle-jaybart-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJaybartOrderPusher'])->name('toggle.jaybart.order.pusher');
-    Route::post('admin/toggle-codecraft-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftOrderPusher'])->name('toggle.codecraft.order.pusher');
-    Route::post('admin/toggle-jesco-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJescoOrderPusher'])->name('toggle.jesco.order.pusher');
+Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('dashboard', [\App\Http\Controllers\AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('users', [\App\Http\Controllers\AdminDashboardController::class, 'users'])->name('users');
+    Route::post('users', [\App\Http\Controllers\AdminDashboardController::class, 'storeUser'])->name('users.store');
+    Route::put('users/{user}', [\App\Http\Controllers\AdminDashboardController::class, 'updateUserRole'])->name('users.updateRole');
+    Route::delete('users/{user}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteUser'])->name('users.delete');
+    Route::post('users/{user}/credit', [\App\Http\Controllers\AdminDashboardController::class, 'creditWallet'])->name('users.credit');
+    Route::post('users/{user}/debit', [\App\Http\Controllers\AdminDashboardController::class, 'debitWallet'])->name('users.debit');
+    Route::get('products', [\App\Http\Controllers\AdminDashboardController::class, 'products'])->name('products');
+    Route::post('products', [\App\Http\Controllers\AdminDashboardController::class, 'storeProduct'])->name('products.store');
+    Route::put('products/{product}', [\App\Http\Controllers\AdminDashboardController::class, 'updateProduct'])->name('products.update');
+    Route::delete('products/{product}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteProduct'])->name('products.delete');
+    Route::get('variations', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'index'])->name('variations');
+    Route::post('variation-attributes', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'store'])->name('variation-attributes.store');
+    Route::put('variation-attributes/{variationAttribute}', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'update'])->name('variation-attributes.update');
+    Route::delete('variation-attributes/{variationAttribute}', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'destroy'])->name('variation-attributes.delete');
+    Route::get('orders', [\App\Http\Controllers\AdminDashboardController::class, 'orders'])->name('orders');
+    Route::delete('orders/{order}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteOrder'])->name('orders.delete');
+    Route::put('orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateOrderStatus'])->name('orders.updateStatus');
+    Route::put('orders/bulk-status', [\App\Http\Controllers\AdminDashboardController::class, 'bulkUpdateOrderStatus'])->name('orders.bulkUpdateStatus');
+    Route::get('transactions', [\App\Http\Controllers\AdminDashboardController::class, 'transactions'])->name('transactions');
+    Route::get('users/{user}/transactions', [\App\Http\Controllers\AdminDashboardController::class, 'userTransactions'])->name('users.transactions');
+    Route::post('orders/export', [\App\Http\Controllers\AdminDashboardController::class, 'exportOrders'])->name('orders.export');
+    Route::get('afa-orders', [\App\Http\Controllers\AdminDashboardController::class, 'afaOrders'])->name('afa-orders');
+    Route::put('afa-orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateAfaOrderStatus'])->name('afa.orders.updateStatus');
+    Route::get('afa-products', [\App\Http\Controllers\AdminDashboardController::class, 'afaProducts'])->name('afa-products');
+    Route::post('afa-products', [\App\Http\Controllers\AdminDashboardController::class, 'storeAfaProduct'])->name('afa-products.store');
+    Route::put('afa-products/{afaProduct}', [\App\Http\Controllers\AdminDashboardController::class, 'updateAfaProduct'])->name('afa-products.update');
+    Route::delete('afa-products/{afaProduct}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteAfaProduct'])->name('afa-products.delete');
+    Route::post('toggle-jaybart-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJaybartOrderPusher'])->name('toggle.jaybart.order.pusher');
+    Route::post('toggle-codecraft-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftOrderPusher'])->name('toggle.codecraft.order.pusher');
+    Route::post('toggle-jesco-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJescoOrderPusher'])->name('toggle.jesco.order.pusher');
+    
+    // Alert routes
+    Route::resource('alerts', \App\Http\Controllers\Admin\AlertController::class);
 });
 
 // Paystack payment routes
@@ -104,6 +111,11 @@ Route::post('/payment/initialize', [PaymentController::class, 'initializePayment
 Route::get('/payment/callback', [PaymentController::class, 'handleCallback'])->name('payment.callback');
 Route::get('/payment/success', function () { return 'Payment Successful!'; })->name('payment.success');
 Route::get('/payment/failed', function () { return 'Payment Failed!'; })->name('payment.failed');
+
+// Test route for alert system
+Route::get('/test-alert', function () {
+    return view('test-alert');
+})->name('test.alert');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

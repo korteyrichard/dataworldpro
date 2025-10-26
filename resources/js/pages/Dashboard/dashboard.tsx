@@ -37,6 +37,13 @@ interface CartItem {
   };
 }
 
+interface Alert {
+  id: number;
+  title: string | null;
+  message: string;
+  is_active: boolean;
+}
+
 interface DashboardProps extends PageProps {
   cartCount: number;
   cartItems: CartItem[];
@@ -47,10 +54,11 @@ interface DashboardProps extends PageProps {
   pendingOrders: number;
   processingOrders: number;
   products: Product[];
+  activeAlert: Alert | null;
 }
 
 export default function Dashboard({ auth }: DashboardProps) {
-  const { cartCount, cartItems, walletBalance: initialWalletBalance, orders, totalSales, todaySales, pendingOrders, processingOrders, products } = usePage<DashboardProps>().props;
+  const { cartCount, cartItems, walletBalance: initialWalletBalance, orders, totalSales, todaySales, pendingOrders, processingOrders, products, activeAlert } = usePage<DashboardProps>().props;
 
   const [walletBalance, setWalletBalance] = useState(initialWalletBalance ?? 0);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -69,6 +77,7 @@ export default function Dashboard({ auth }: DashboardProps) {
   const [availableSizes, setAvailableSizes] = useState<Array<{value: string, label: string, price: number}>>([]);
   const [loadingSizes, setLoadingSizes] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showAlert, setShowAlert] = useState(!!activeAlert);
 
   // Filter products based on user role
   const filteredProducts = products?.filter(product => {
@@ -277,6 +286,44 @@ export default function Dashboard({ auth }: DashboardProps) {
       header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Dashboard</h2>}
     >
       <Head title="Dashboard" />
+
+      {/* Alert Popup */}
+      {activeAlert && showAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4 relative border-2 border-blue-200 dark:border-gray-600 transform transition-all duration-300 scale-100">
+            <div className="absolute -top-4 -left-4 w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <button
+              className="absolute top-4 right-4 w-8 h-8 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center transition-colors duration-200 shadow-sm"
+              onClick={() => setShowAlert(false)}
+              aria-label="Close alert"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="pt-2">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+                {activeAlert.title || '📢 Important Notice'}
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">
+                {activeAlert.message}
+              </p>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowAlert(false)}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5"
+                >
+                  Got it!
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Wallet Add Modal */}
       {showAddModal && (

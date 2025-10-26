@@ -34,6 +34,8 @@ const adminNavigation: NavigationItem[] = [
   { name: "Users", href: route("admin.users"), icon: "Users", current: route().current("admin.users") },
   { name: "Products", href: route("admin.products"), icon: "Box", current: route().current("admin.products") },
   { name: "Orders", href: route("admin.orders"), icon: "Package", current: route().current("admin.orders") },
+  { name: "Alerts", href: route("admin.alerts.index"), icon: "Bell", current: route().current("admin.alerts.*") },
+  { name: "AFA Products", href: route("admin.afa-products"), icon: "Star", current: route().current("admin.afa-products") },
   { name: "AFA Orders", href: route("admin.afa-orders"), icon: "FileText", current: route().current("admin.afa-orders") },
   { name: "Transactions", href: route("admin.transactions"), icon: "Receipt", current: route().current("admin.transactions") },
   { name: "Settings", href: route("profile.edit"), icon: "Settings", current: route().current("profile.edit") || route().current("password.edit") || route().current("appearance") },

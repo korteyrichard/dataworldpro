@@ -75,6 +75,8 @@ class DashboardController extends Controller
             ->whereIn('status', ['processing', 'PROCESSING'])
             ->count();
         
+        $activeAlert = \App\Models\Alert::where('is_active', true)->latest()->first();
+        
         return Inertia::render('Dashboard/dashboard', [
             'cartCount' => $cartCount,
             'cartItems' => $cartItems,
@@ -84,6 +86,7 @@ class DashboardController extends Controller
             'todaySales' => $todaySales ?? 0,
             'pendingOrders' => $pendingOrdersCount ?? 0,
             'processingOrders' => $processingOrdersCount ?? 0,
+            'activeAlert' => $activeAlert,
         ]);
     }
 

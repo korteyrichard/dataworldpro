@@ -758,4 +758,65 @@ class AdminDashboardController extends Controller
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "Jesco order pusher {$status} successfully.");
     }
+
+    /**
+     * Display AFA products page.
+     */
+    public function afaProducts()
+    {
+        $afaProducts = \App\Models\AFAProduct::latest()->get();
+        
+        return Inertia::render('Admin/AFAProducts', [
+            'afaProducts' => $afaProducts
+        ]);
+    }
+
+    /**
+     * Store a new AFA product.
+     */
+    public function storeAfaProduct(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'status' => 'required|in:IN_STOCK,OUT_OF_STOCK',
+        ]);
+
+        \App\Models\AFAProduct::create([
+            'name' => $request->name,
+            'price' => $request->price,
+            'status' => $request->status,
+        ]);
+
+        return redirect()->back()->with('success', 'AFA product created successfully.');
+    }
+
+    /**
+     * Update an AFA product.
+     */
+    public function updateAfaProduct(Request $request, \App\Models\AFAProduct $afaProduct)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'status' => 'required|in:IN_STOCK,OUT_OF_STOCK',
+        ]);
+
+        $afaProduct->update([
+            'name' => $request->name,
+            'price' => $request->price,
+            'status' => $request->status,
+        ]);
+
+        return redirect()->back()->with('success', 'AFA product updated successfully.');
+    }
+
+    /**
+     * Delete an AFA product.
+     */
+    public function deleteAfaProduct(\App\Models\AFAProduct $afaProduct)
+    {
+        $afaProduct->delete();
+        return redirect()->back()->with('success', 'AFA product deleted successfully.');
+    }
 }
