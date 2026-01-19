@@ -48,4 +48,10 @@ return [
         'api_key' => env('JESCO_API_KEY'),
     ],
 
+    'easydata' => [
+        'base_url' => env('EASYDATA_BASE_URL', 'https://easydatagh.pro/wp-json/custom/v1'),
+        'username' => env('EASYDATA_USERNAME', 'Bright Sarpong'),
+        'password' => env('EASYDATA_PASSWORD', 'PWiOCj43epVmwXsvpMq2dtZF'),
+    ],
+
 ];

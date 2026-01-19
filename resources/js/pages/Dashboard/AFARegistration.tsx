@@ -13,7 +13,7 @@ interface AFAProduct {
 interface AFAOrder {
   id: number;
   full_name: string;
-  email: string;
+  ghana_card: string;
   phone: string;
   dob?: string;
   occupation?: string;
@@ -35,7 +35,7 @@ export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFAReg
   const { data, setData, post, processing, errors, reset } = useForm({
     afa_product_id: '',
     full_name: '',
-    email: auth.user.email,
+    ghana_card: '',
     phone: auth.user.phone || '',
     dob: '',
     occupation: '',
@@ -175,16 +175,16 @@ export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFAReg
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email Address *
+                  Ghana Card Number *
                 </label>
                 <input
-                  type="email"
-                  name="email"
-                  value={data.email}
+                  type="text"
+                  name="ghana_card"
+                  value={data.ghana_card}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                  placeholder="Enter your email address"
+                  placeholder="GHA-XXXXXXXXX-X"
                 />
               </div>
 
@@ -307,7 +307,7 @@ export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFAReg
                           #{order.id}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {order.afaproduct.name}
+                          {order.afaproduct?.name || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -334,8 +334,8 @@ export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFAReg
                                 <p className="text-gray-900 dark:text-gray-100">{order.full_name}</p>
                               </div>
                               <div>
-                                <strong className="text-gray-700 dark:text-gray-300">Email:</strong>
-                                <p className="text-gray-900 dark:text-gray-100">{order.email}</p>
+                                <strong className="text-gray-700 dark:text-gray-300">Ghana Card:</strong>
+                                <p className="text-gray-900 dark:text-gray-100">{order.ghana_card}</p>
                               </div>
                               <div>
                                 <strong className="text-gray-700 dark:text-gray-300">Phone:</strong>
@@ -343,7 +343,7 @@ export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFAReg
                               </div>
                               <div>
                                 <strong className="text-gray-700 dark:text-gray-300">Product Price:</strong>
-                                <p className="text-gray-900 dark:text-gray-100">GHS {order.afaproduct.price}</p>
+                                <p className="text-gray-900 dark:text-gray-100">GHS {order.afaproduct?.price || '0.00'}</p>
                               </div>
                               {order.dob && (
                                 <div>

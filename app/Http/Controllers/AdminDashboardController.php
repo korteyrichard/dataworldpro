@@ -21,59 +21,25 @@ class AdminDashboardController extends Controller
      */
     public function index()
     {
-        $users = User::all();
-        $products = Product::with('variants')->get();
-        $orders = Order::with(['products' => function($query) {
-            $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }])->select('*')->get();
-        
-        // Transform orders to include variant information
-        $orders = $orders->map(function($order) {
-            $order->products = $order->products->map(function($product) {
-                if ($product->pivot->product_variant_id) {
-                    $variant = \App\Models\ProductVariant::find($product->pivot->product_variant_id);
-                    if ($variant && isset($variant->variant_attributes['size'])) {
-                        $product->size = strtoupper($variant->variant_attributes['size']);
-                    }
-                }
-                return $product;
-            });
-            return $order;
-        });
-        $transactions = Transaction::all();
-
         $today = now()->today();
-        $todayUsers = User::whereDate('created_at', $today)->get();
-        $todayOrders = Order::with(['products' => function($query) {
-            $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }])->select('*')->whereDate('created_at', $today)->get();
         
-        // Transform today's orders to include variant information
-        $todayOrders = $todayOrders->map(function($order) {
-            $order->products = $order->products->map(function($product) {
-                if ($product->pivot->product_variant_id) {
-                    $variant = \App\Models\ProductVariant::find($product->pivot->product_variant_id);
-                    if ($variant && isset($variant->variant_attributes['size'])) {
-                        $product->size = strtoupper($variant->variant_attributes['size']);
-                    }
-                }
-                return $product;
-            });
-            return $order;
-        });
-        $todayTransactions = Transaction::whereDate('created_at', $today)->get();
+        // Use count queries instead of fetching all data
+        $stats = [
+            'totalUsers' => User::count(),
+            'totalProducts' => Product::count(),
+            'totalOrders' => Order::count(),
+            'totalTransactions' => Transaction::count(),
+            'todayUsers' => User::whereDate('created_at', $today)->count(),
+            'todayOrders' => Order::whereDate('created_at', $today)->count(),
+            'todayTransactions' => Transaction::whereDate('created_at', $today)->count(),
+        ];
 
         return Inertia::render('Admin/Dashboard', [
-            'users' => $users,
-            'products' => $products,
-            'orders' => $orders,
-            'transactions' => $transactions,
-            'todayUsers' => $todayUsers,
-            'todayOrders' => $todayOrders,
-            'todayTransactions' => $todayTransactions,
+            'stats' => $stats,
             'jaybartOrderPusherEnabled' => (bool) Setting::get('jaybart_order_pusher_enabled', 1),
             'codecraftOrderPusherEnabled' => (bool) Setting::get('codecraft_order_pusher_enabled', 1),
             'jescoOrderPusherEnabled' => (bool) Setting::get('jesco_order_pusher_enabled', 1),
+            'easydataOrderPusherEnabled' => (bool) Setting::get('easydata_order_pusher_enabled', 1),
         ]);
     }
 
@@ -702,7 +668,14 @@ class AdminDashboardController extends Controller
      */
     public function afaOrders()
     {
-        $afaOrders = \App\Models\AFAOrders::with(['afaproduct', 'user'])->latest()->get();
+        $afaOrders = \App\Models\AFAOrders::with(['afaproduct', 'user'])
+            ->latest()
+            ->get()
+            ->filter(function($order) {
+                // Filter out orders with null relationships to prevent frontend errors
+                return $order->user !== null && $order->afaproduct !== null;
+            })
+            ->values(); // Reset array keys
         
         return Inertia::render('Admin/AFAOrders', [
             'afaOrders' => $afaOrders
@@ -757,6 +730,18 @@ class AdminDashboardController extends Controller
         
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "Jesco order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle EasyData order pusher functionality.
+     */
+    public function toggleEasydataOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('easydata_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "EasyData order pusher {$status} successfully.");
     }
 
     /**

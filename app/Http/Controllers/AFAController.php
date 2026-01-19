@@ -13,7 +13,12 @@ class AFAController extends Controller
     public function index()
     {
         $afaProducts = AFAProduct::where('status', 'IN_STOCK')->get();
-        $afaOrders = auth()->user()->afaOrders()->with('afaproduct')->latest()->get();
+        $afaOrders = auth()->user()->afaOrders()->with('afaproduct')->latest()->get()
+            ->filter(function($order) {
+                // Filter out orders with null afaproduct relationship
+                return $order->afaproduct !== null;
+            })
+            ->values(); // Reset array keys
         
         return Inertia::render('Dashboard/AFARegistration', [
             'afaProducts' => $afaProducts,
@@ -23,7 +28,12 @@ class AFAController extends Controller
 
     public function afaOrders()
     {
-        $afaOrders = auth()->user()->afaOrders()->with('afaproduct')->latest()->get();
+        $afaOrders = auth()->user()->afaOrders()->with('afaproduct')->latest()->get()
+            ->filter(function($order) {
+                // Filter out orders with null afaproduct relationship
+                return $order->afaproduct !== null;
+            })
+            ->values(); // Reset array keys
         return Inertia::render('Dashboard/AFAOrders', [
             'afaOrders' => $afaOrders
         ]);
@@ -34,7 +44,7 @@ class AFAController extends Controller
         $request->validate([
             'afa_product_id' => 'required|exists:afa_products,id',
             'full_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
+            'ghana_card' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'dob' => 'required|date',
             'occupation' => 'required|string|max:255',
@@ -54,9 +64,9 @@ class AFAController extends Controller
         DB::transaction(function() use ($request, $afaProduct) {
             AFAOrders::create([
                 'user_id' => auth()->id(),
-                'Afa_product_id' => $request->afa_product_id,
+                'afa_product_id' => $request->afa_product_id,
                 'full_name' => $request->full_name,
-                'email' => $request->email,
+                'ghana_card' => $request->ghana_card,
                 'phone' => $request->phone,
                 'dob' => $request->dob,
                 'occupation' => $request->occupation,

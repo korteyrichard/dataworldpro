@@ -78,6 +78,15 @@ export default function Dashboard({ auth }: DashboardProps) {
   const [loadingSizes, setLoadingSizes] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showAlert, setShowAlert] = useState(!!activeAlert);
+  const [errorAlert, setErrorAlert] = useState<{show: boolean, message: string}>({show: false, message: ''});
+
+  const showErrorAlert = (message: string) => {
+    setErrorAlert({show: true, message});
+  };
+
+  const hideErrorAlert = () => {
+    setErrorAlert({show: false, message: ''});
+  };
 
   // Filter products based on user role
   const filteredProducts = products?.filter(product => {
@@ -155,12 +164,13 @@ export default function Dashboard({ auth }: DashboardProps) {
       const data = await response.json();
       if (data.success) {
         setExcelFile(null);
+        alert(data.message || 'Excel file processed successfully');
         router.reload();
       } else {
-        alert(data.message || 'Failed to process Excel file');
+        showErrorAlert(data.message || 'Failed to process Excel file');
       }
     } catch (error) {
-      alert('Error processing Excel file');
+      showErrorAlert('Error processing Excel file');
     } finally {
       setIsProcessing(false);
     }
@@ -186,12 +196,13 @@ export default function Dashboard({ auth }: DashboardProps) {
       const data = await response.json();
       if (data.success) {
         setBulkNumbers('');
+        alert(data.message || 'Bulk numbers processed successfully');
         router.reload();
       } else {
-        alert(data.message || 'Failed to process bulk numbers');
+        showErrorAlert(data.message || 'Failed to process bulk numbers');
       }
     } catch (error) {
-      alert('Error processing bulk numbers');
+      showErrorAlert('Error processing bulk numbers');
     } finally {
       setIsProcessing(false);
     }
@@ -204,7 +215,7 @@ export default function Dashboard({ auth }: DashboardProps) {
     const existingCartItem = cartItems.find(item => item.beneficiary_number === phoneNumber);
     
     if (existingCartItem) {
-      alert('This phone number is already in your cart');
+      showErrorAlert('This phone number is already in your cart');
       return;
     }
     
@@ -218,7 +229,13 @@ export default function Dashboard({ auth }: DashboardProps) {
         setBundleSize('');
       },
       onError: (errors) => {
-        console.error('Error adding to cart:', errors);
+        // Handle validation errors from backend
+        if (errors.error) {
+          showErrorAlert(errors.error);
+        } else {
+          console.error('Error adding to cart:', errors);
+          showErrorAlert('Failed to add item to cart. Please try again.');
+        }
       }
     });
   };
@@ -286,6 +303,31 @@ export default function Dashboard({ auth }: DashboardProps) {
       header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Dashboard</h2>}
     >
       <Head title="Dashboard" />
+
+      {/* Error Alert Popup */}
+      {errorAlert.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 relative border-2 border-red-200 dark:border-red-600">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center mr-3">
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Error</h3>
+            </div>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">{errorAlert.message}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={hideErrorAlert}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Alert Popup */}
       {activeAlert && showAlert && (

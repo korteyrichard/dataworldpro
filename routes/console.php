@@ -16,3 +16,6 @@ Schedule::command('orders:complete-old')->everyTenMinutes();
 
 // Sync Jesco order statuses
 Schedule::command('orders:sync-jesco-status')->everyTenMinutes();
+
+// Sync EasyData order statuses
+Schedule::command('orders:sync-easydata-status')->everyTenMinutes();

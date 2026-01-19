@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use App\Services\OrderPusherService;
 use App\Services\CodeCraftOrderPusherService;
 use App\Services\JescoOrderPusherService;
+use App\Services\EasyDataOrderPusherService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
 
@@ -102,6 +103,10 @@ class OrderController extends Controller
                 if (Setting::get('jesco_order_pusher_enabled', 1)) {
                     $jescoOrderPusher = new JescoOrderPusherService();
                     $jescoOrderPusher->pushOrderToApi($order);
+                }
+                if (Setting::get('easydata_order_pusher_enabled', 1)) {
+                    $easydataOrderPusher = new EasyDataOrderPusherService();
+                    $easydataOrderPusher->pushOrderToApi($order);
                 }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && Setting::get('codecraft_order_pusher_enabled', 1)) {
                 $codeCraftOrderPusher = new CodeCraftOrderPusherService();

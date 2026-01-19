@@ -11,7 +11,7 @@ class AFAProduct extends Model
 
     public function afaorders()
     {
-        return $this->hasMany(AFAOrders::class, 'Afa_product_id');
+        return $this->hasMany(AFAOrders::class, 'afa_product_id');
     }
 
 }

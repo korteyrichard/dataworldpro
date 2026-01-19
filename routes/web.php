@@ -98,6 +98,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('toggle-jaybart-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJaybartOrderPusher'])->name('toggle.jaybart.order.pusher');
     Route::post('toggle-codecraft-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftOrderPusher'])->name('toggle.codecraft.order.pusher');
     Route::post('toggle-jesco-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJescoOrderPusher'])->name('toggle.jesco.order.pusher');
+    Route::post('toggle-easydata-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleEasydataOrderPusher'])->name('toggle.easydata.order.pusher');
     
     // Alert routes
     Route::resource('alerts', \App\Http\Controllers\Admin\AlertController::class);

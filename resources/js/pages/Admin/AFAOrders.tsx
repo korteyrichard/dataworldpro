@@ -18,7 +18,7 @@ interface User {
 interface AFAOrder {
   id: number;
   full_name: string;
-  email: string;
+  ghana_card: string;
   phone: string;
   dob?: string;
   occupation?: string;
@@ -116,15 +116,15 @@ export default function AFAOrders() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             <div>
-                              <div className="font-medium">{order.user.name}</div>
-                              <div className="text-gray-500">{order.user.email}</div>
+                              <div className="font-medium">{order.user?.name || 'N/A'}</div>
+                              <div className="text-gray-500">{order.user?.email || 'N/A'}</div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {order.afaproduct.name}
+                            {order.afaproduct?.name || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            GHS {order.afaproduct.price}
+                            GHS {order.afaproduct?.price || '0.00'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <select
@@ -161,8 +161,8 @@ export default function AFAOrders() {
                                   <p className="text-gray-900 dark:text-gray-100">{order.full_name}</p>
                                 </div>
                                 <div>
-                                  <strong className="text-gray-700 dark:text-gray-300">Email:</strong>
-                                  <p className="text-gray-900 dark:text-gray-100">{order.email}</p>
+                                  <strong className="text-gray-700 dark:text-gray-300">Ghana Card:</strong>
+                                  <p className="text-gray-900 dark:text-gray-100">{order.ghana_card}</p>
                                 </div>
                                 <div>
                                   <strong className="text-gray-700 dark:text-gray-300">Phone:</strong>
@@ -192,7 +192,7 @@ export default function AFAOrders() {
                                 </div>
                                 <div>
                                   <strong className="text-gray-700 dark:text-gray-300">User ID:</strong>
-                                  <p className="text-gray-900 dark:text-gray-100">#{order.user.id}</p>
+                                  <p className="text-gray-900 dark:text-gray-100">#{order.user?.id || 'N/A'}</p>
                                 </div>
                               </div>
                             </td>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -56,6 +57,32 @@ class CartController extends Controller
                 return redirect()->back()->withErrors(['error' => 'Product variant not available']);
             }
             
+            // Check for existing orders with same beneficiary number and pending/processing status
+            $existingOrder = Order::where('beneficiary_number', $request->beneficiary_number)
+                ->whereIn('status', ['pending', 'processing'])
+                ->first();
+                
+            if ($existingOrder) {
+                $errorMessage = 'Cannot add to cart. There is already an existing order for beneficiary number ' . $request->beneficiary_number . ' with status: ' . $existingOrder->status . '. Wait for the order to complete.';
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 400);
+                }
+                return redirect()->back()->withErrors(['error' => $errorMessage]);
+            }
+            
+            // Check for existing cart items with same beneficiary number
+            $existingCartItem = Cart::where('beneficiary_number', $request->beneficiary_number)
+                ->where('user_id', $user->id)
+                ->first();
+                
+            if ($existingCartItem) {
+                $errorMessage = 'Cannot add to cart. There is already an item in your cart for beneficiary number ' . $request->beneficiary_number;
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 400);
+                }
+                return redirect()->back()->withErrors(['error' => $errorMessage]);
+            }
+            
             Cart::create([
                 'user_id' => $user->id,
                 'product_id' => $product->id,
@@ -88,6 +115,32 @@ class CartController extends Controller
             
         if (!$variant) {
             return response()->json(['success' => false, 'message' => 'Product variant not available'], 400);
+        }
+        
+        // Check for existing orders with same beneficiary number and pending/processing status
+        $existingOrder = Order::where('beneficiary_number', $request->beneficiary_number)
+            ->whereIn('status', ['pending', 'processing'])
+            ->first();
+            
+        if ($existingOrder) {
+            $errorMessage = 'Cannot add to cart. There is already an existing order for beneficiary number ' . $request->beneficiary_number . ' with status: ' . $existingOrder->status . '. Wait for the order to complete.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMessage], 400);
+            }
+            return redirect()->back()->withErrors(['error' => $errorMessage]);
+        }
+        
+        // Check for existing cart items with same beneficiary number
+        $existingCartItem = Cart::where('beneficiary_number', $request->beneficiary_number)
+            ->where('user_id', $user->id)
+            ->first();
+            
+        if ($existingCartItem) {
+            $errorMessage = 'Cannot add to cart. There is already an item in your cart for beneficiary number ' . $request->beneficiary_number;
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMessage], 400);
+            }
+            return redirect()->back()->withErrors(['error' => $errorMessage]);
         }
         
         Cart::create([
@@ -211,6 +264,26 @@ class CartController extends Controller
                     
                     // Validate phone number format
                     if (preg_match('/^\d{10}$/', $phoneNumber)) {
+                        // Check for existing orders with same beneficiary number
+                        $existingOrder = Order::where('beneficiary_number', $phoneNumber)
+                            ->whereIn('status', ['pending', 'processing'])
+                            ->first();
+                            
+                        if ($existingOrder) {
+                            Log::info('Skipping due to existing order: ' . $phoneNumber);
+                            continue;
+                        }
+                        
+                        // Check for existing cart items with same beneficiary number
+                        $existingCartItem = Cart::where('beneficiary_number', $phoneNumber)
+                            ->where('user_id', $user->id)
+                            ->first();
+                            
+                        if ($existingCartItem) {
+                            Log::info('Skipping due to existing cart item: ' . $phoneNumber);
+                            continue;
+                        }
+                        
                         // Find the variant by size - handle both cases and avoid double GB
                         $bundleSize = trim($bundleSize);
                         if (strtoupper(substr($bundleSize, -2)) === 'GB') {
@@ -336,6 +409,27 @@ class CartController extends Controller
                     Log::info('Validating phone number', ['phone' => $phoneNumber, 'length' => strlen($phoneNumber)]);
                     if (preg_match('/^\d{10}$/', $phoneNumber)) {
                         Log::info('Phone number validation passed', ['phone' => $phoneNumber]);
+                        
+                        // Check for existing orders with same beneficiary number
+                        $existingOrder = Order::where('beneficiary_number', $phoneNumber)
+                            ->whereIn('status', ['pending', 'processing'])
+                            ->first();
+                            
+                        if ($existingOrder) {
+                            Log::info('Skipping due to existing order', ['phone' => $phoneNumber]);
+                            continue;
+                        }
+                        
+                        // Check for existing cart items with same beneficiary number
+                        $existingCartItem = Cart::where('beneficiary_number', $phoneNumber)
+                            ->where('user_id', $user->id)
+                            ->first();
+                            
+                        if ($existingCartItem) {
+                            Log::info('Skipping due to existing cart item', ['phone' => $phoneNumber]);
+                            continue;
+                        }
+                        
                         // Find the variant by size - try multiple formats
                         $sizeKey = $bundleSize . 'gb'; // lowercase format
                         $alternateSizeKey = $bundleSize . 'GB'; // uppercase format

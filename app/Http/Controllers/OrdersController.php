@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use App\Services\OrderPusherService;
 use App\Services\CodeCraftOrderPusherService;
 use App\Services\JescoOrderPusherService;
+use App\Services\EasyDataOrderPusherService;
 use App\Models\Setting;
 
 class OrdersController extends Controller
@@ -146,6 +147,7 @@ class OrdersController extends Controller
             $jaybartEnabled = (bool) Setting::get('jaybart_order_pusher_enabled', 1);
             $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);
             $jescoEnabled = (bool) Setting::get('jesco_order_pusher_enabled', 1);
+            $easydataEnabled = (bool) Setting::get('easydata_order_pusher_enabled', 1);
             
             foreach ($createdOrders as $order) {
                 try {
@@ -160,7 +162,12 @@ class OrdersController extends Controller
                             $jescoOrderPusher->pushOrderToApi($order);
                             Log::info('Order pushed to Jesco API', ['orderId' => $order->id, 'network' => $order->network]);
                         }
-                        if (!$jaybartEnabled && !$jescoEnabled) {
+                        if ($easydataEnabled) {
+                            $easydataOrderPusher = new EasyDataOrderPusherService();
+                            $easydataOrderPusher->pushOrderToApi($order);
+                            Log::info('Order pushed to EasyData API', ['orderId' => $order->id, 'network' => $order->network]);
+                        }
+                        if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled) {
                             Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
                         }
                     } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && $codecraftEnabled) {

@@ -25,16 +25,19 @@ interface Transaction {
 }
 
 interface AdminDashboardProps extends PageProps {
-  users: User[];
-  products: Product[];
-  orders: Order[];
-  transactions: Transaction[];
-  todayUsers: User[];
-  todayOrders: Order[];
-  todayTransactions: Transaction[];
+  stats: {
+    totalUsers: number;
+    totalProducts: number;
+    totalOrders: number;
+    totalTransactions: number;
+    todayUsers: number;
+    todayOrders: number;
+    todayTransactions: number;
+  };
   jaybartOrderPusherEnabled: boolean;
   codecraftOrderPusherEnabled: boolean;
   jescoOrderPusherEnabled: boolean;
+  easydataOrderPusherEnabled: boolean;
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -45,16 +48,11 @@ const StatCard = ({ title, value }: { title: string; value: number | string }) =
 );
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({
-  users,
-  products,
-  orders,
-  transactions,
-  todayUsers,
-  todayOrders,
-  todayTransactions,
+  stats,
   jaybartOrderPusherEnabled,
   codecraftOrderPusherEnabled,
   jescoOrderPusherEnabled,
+  easydataOrderPusherEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
 
@@ -76,6 +74,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
   };
 
+  const toggleEasydataOrderPusher = () => {
+    router.post('/admin/toggle-easydata-order-pusher', {
+      enabled: !easydataOrderPusherEnabled
+    });
+  };
+
   return (
     <AdminLayout
       user={auth?.user}
@@ -88,10 +92,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <section>
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Overall Summary</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Total Users" value={users.length} />
-            <StatCard title="Total Products" value={products.length} />
-            <StatCard title="Total Orders" value={orders.length} />
-            <StatCard title="Total Transactions" value={transactions.length} />
+            <StatCard title="Total Users" value={stats.totalUsers} />
+            <StatCard title="Total Products" value={stats.totalProducts} />
+            <StatCard title="Total Orders" value={stats.totalOrders} />
+            <StatCard title="Total Transactions" value={stats.totalTransactions} />
           </div>
         </section>
 
@@ -99,9 +103,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <section>
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Today's Statistics</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatCard title="New Users Today" value={todayUsers.length} />
-            <StatCard title="Orders Today" value={todayOrders.length} />
-            <StatCard title="Transactions Today" value={todayTransactions.length} />
+            <StatCard title="New Users Today" value={stats.todayUsers} />
+            <StatCard title="Orders Today" value={stats.todayOrders} />
+            <StatCard title="Transactions Today" value={stats.todayTransactions} />
           </div>
         </section>
 
@@ -175,6 +179,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                       jescoOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* EasyData Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">EasyData Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {easydataOrderPusherEnabled ? 'MTN orders are being pushed to EasyData API' : 'EasyData order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleEasydataOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    easydataOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      easydataOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
