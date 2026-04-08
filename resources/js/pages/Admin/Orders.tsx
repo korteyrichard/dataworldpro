@@ -22,12 +22,25 @@ interface Order {
   created_at: string;
   network?: string;
   beneficiary_number?: string;
+  payment_reference?: string;
   order_pusher_status: 'disabled' | 'success' | 'failed' | null | undefined;
+  order_source?: 'shop' | 'dashboard';
+  commissions?: Array<{
+    id: number;
+    base_price: number;
+    agent_price: number;
+    commission_amount: number;
+    quantity: number;
+  }>;
   products: Product[];
   user: {
     id: number;
     name: string;
     email: string;
+    shop?: {
+      name: string;
+      owner_name: string;
+    };
   };
 }
 
@@ -51,6 +64,7 @@ interface AdminOrdersPageProps {
   auth: any;
   filterNetwork: string;
   filterStatus: string;
+  filterOrderPusherStatus: string;
   searchOrderId: string;
   searchBeneficiaryNumber: string;
   dailyTotalSales: number;
@@ -63,6 +77,7 @@ export default function AdminOrders() {
     auth,
     filterNetwork: initialNetworkFilter,
     filterStatus: initialStatusFilter,
+    filterOrderPusherStatus: initialOrderPusherStatusFilter,
     searchOrderId: initialSearchOrderId,
     searchBeneficiaryNumber: initialSearchBeneficiaryNumber,
     dailyTotalSales,
@@ -71,6 +86,7 @@ export default function AdminOrders() {
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [networkFilter, setNetworkFilter] = useState(initialNetworkFilter || '');
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter || '');
+  const [orderPusherStatusFilter, setOrderPusherStatusFilter] = useState(initialOrderPusherStatusFilter || '');
   const [searchOrderId, setSearchOrderId] = useState(initialSearchOrderId || '');
   const [searchBeneficiaryNumber, setSearchBeneficiaryNumber] = useState(initialSearchBeneficiaryNumber || '');
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
@@ -79,13 +95,30 @@ export default function AdminOrders() {
   const networks = Array.from(new Set(orders.data.map(o => o.network).filter(Boolean)));
 
   const handleFilterChange = (filterName: string, value: string) => {
-    const newFilters = {
-      network: filterName === 'network' ? value : networkFilter,
-      status: filterName === 'status' ? value : statusFilter,
-    };
-    setNetworkFilter(newFilters.network);
-    setStatusFilter(newFilters.status);
-    router.get(route('admin.orders'), newFilters, { preserveState: true, replace: true });
+    const params: any = {};
+    
+    if (filterName === 'network') {
+      setNetworkFilter(value);
+      if (value) params.network = value;
+    } else if (networkFilter) {
+      params.network = networkFilter;
+    }
+    
+    if (filterName === 'status') {
+      setStatusFilter(value);
+      if (value) params.status = value;
+    } else if (statusFilter) {
+      params.status = statusFilter;
+    }
+    
+    if (filterName === 'order_pusher_status') {
+      setOrderPusherStatusFilter(value);
+      if (value) params.order_pusher_status = value;
+    } else if (orderPusherStatusFilter) {
+      params.order_pusher_status = orderPusherStatusFilter;
+    }
+    
+    router.get(route('admin.orders'), params, { preserveState: true, replace: true });
   };
 
   const handleSearch = (searchType: 'order_id' | 'beneficiary_number', value: string) => {
@@ -250,7 +283,7 @@ export default function AdminOrders() {
         )}
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Network</label>
             <select
@@ -277,6 +310,19 @@ export default function AdminOrders() {
               <option value="processing">Processing</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by API Status</label>
+            <select
+              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
+              value={orderPusherStatusFilter}
+              onChange={(e) => handleFilterChange('order_pusher_status', e.target.value)}
+            >
+              <option value="">--select API status--</option>
+              <option value="success">Success</option>
+              <option value="failed">Failed</option>
             </select>
           </div>
 
@@ -346,8 +392,25 @@ export default function AdminOrders() {
                       <td className="px-3 sm:px-5 py-3 sm:py-4 font-semibold">{order.id}</td>
                       <td className="px-3 sm:px-5 py-3 sm:py-4">
                         <div className="text-sm">
-                          <div className="font-medium">{order.user.name}</div>
-                          <div className="text-gray-500 text-xs">{order.user.email}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {order.order_source === 'shop' ? 
+                                (order.buyer_email ? order.buyer_email.split('@')[0] : 'Guest Customer') : 
+                                (order.user?.name || 'Unknown User')
+                              }
+                            </span>
+                            {order.order_source === 'shop' && (
+                              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
+                                Shop Order
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-gray-500 text-xs">
+                            {order.order_source === 'shop' ? 
+                              (order.buyer_email || 'No email') : 
+                              (order.user?.email || 'No email')
+                            }
+                          </div>
                         </div>
                       </td>
                       <td className="px-3 sm:px-5 py-3 sm:py-4 whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</td>
@@ -393,18 +456,33 @@ export default function AdminOrders() {
                           <div className="space-y-2 text-xs sm:text-sm">
                             <p><strong>Status:</strong> {order.status}</p>
                             <p><strong>API Status:</strong> <span className={`px-2 py-1 rounded text-xs ${getOrderPusherStatusColor(order.order_pusher_status || 'disabled')}`}>{order.order_pusher_status ? order.order_pusher_status.charAt(0).toUpperCase() + order.order_pusher_status.slice(1) : 'Disabled'}</span></p>
+                            {order.payment_reference && (
+                              <p><strong>Payment Reference:</strong> {order.payment_reference}</p>
+                            )}
+                            {order.order_source === 'shop' && order.commissions && order.commissions.length > 0 && (
+                              <div className="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
+                                <p className="font-medium text-purple-700 dark:text-purple-300">Commission Details:</p>
+                                {order.commissions.map((commission: any, index: number) => (
+                                  <div key={index} className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                                    <p>Base Price: <span className="font-semibold">GHS {commission.base_price}</span></p>
+                                    <p>Agent Price: <span className="font-semibold">GHS {commission.agent_price}</span></p>
+                                    <p>Commission: <span className="font-semibold">GHS {commission.commission_amount}</span></p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             <p><strong>Products:</strong></p>
                             <ul className="list-disc pl-4 sm:pl-5 space-y-1">
-                              {order.products.map((product) => (
+                              {order.products?.filter(product => product).map((product) => (
                                 <li key={product.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                                   <span>
-                                    {product.name}{product.size ? ` (${product.size})` : ''} - GHS {product.pivot.price}
+                                    {product?.name || 'Unknown Product'}{product?.size ? ` (${product.size})` : ''} - GHS {product?.pivot?.price || 0}
                                   </span>
                                   <span className="text-xs text-gray-600 dark:text-gray-400">
-                                    Beneficiary: {product.pivot.beneficiary_number || '-'}
+                                    Beneficiary: {product?.pivot?.beneficiary_number || '-'}
                                   </span>
                                 </li>
-                              ))}
+                              )) || []}
                             </ul>
                           </div>
                         </td>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
 
 
 interface Order {
@@ -55,10 +56,16 @@ interface DashboardProps extends PageProps {
   processingOrders: number;
   products: Product[];
   activeAlert: Alert | null;
+  flash?: {
+    success?: string;
+    error?: string;
+    show_upgrade_prompt?: boolean;
+  };
 }
 
 export default function Dashboard({ auth }: DashboardProps) {
-  const { cartCount, cartItems, walletBalance: initialWalletBalance, orders, totalSales, todaySales, pendingOrders, processingOrders, products, activeAlert } = usePage<DashboardProps>().props;
+  const { cartCount, cartItems, walletBalance: initialWalletBalance, orders, totalSales, todaySales, pendingOrders, processingOrders, products, activeAlert, flash } = usePage<DashboardProps>().props;
+  const { toast } = useToast();
 
   const [walletBalance, setWalletBalance] = useState(initialWalletBalance ?? 0);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -143,6 +150,24 @@ export default function Dashboard({ auth }: DashboardProps) {
   useEffect(() => {
     fetchBundleSizes(selectedNetwork);
   }, []);
+
+  // Handle flash messages
+  useEffect(() => {
+    if (flash?.success) {
+      toast({
+        title: "Success!",
+        description: flash.success,
+        variant: "default",
+      });
+    }
+    if (flash?.error) {
+      toast({
+        title: "Error",
+        description: flash.error,
+        variant: "destructive",
+      });
+    }
+  }, [flash, toast]);
 
   const handleProcessExcel = async () => {
     if (!excelFile) return;
@@ -441,6 +466,29 @@ export default function Dashboard({ auth }: DashboardProps) {
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Welcome, {auth.user.name}!</h1>
           </div>
+
+          {/* Upgrade Prompt for Referred Users */}
+          {flash?.show_upgrade_prompt && auth.user.role === 'customer' && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                    <Icon name="Users" className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">Ready to Upgrade?</h3>
+                    <p className="text-blue-700 dark:text-blue-300">You were referred by an agent. Upgrade now to start earning commissions!</p>
+                  </div>
+                </div>
+                <Link
+                  href={route('upgrade.agent.show')}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Upgrade Now
+                </Link>
+              </div>
+            </div>
+          )}
           {/* Action Buttons Section */}
           {auth.user.role === 'customer' && (
           <div className='w-full mb-10'>

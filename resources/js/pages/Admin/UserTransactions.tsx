@@ -2,15 +2,44 @@ import React from "react";
 import { AdminLayout } from "../../layouts/admin-layout";
 import { Button } from "@/components/ui/button";
 import { PageProps, User, Transaction } from '@/types';
-import { ArrowLeft, Calendar, DollarSign, FileText } from "lucide-react";
+import { ArrowLeft, Calendar, DollarSign, FileText, ShoppingCart, TrendingUp } from "lucide-react";
 import { Link } from '@inertiajs/react';
 
 interface UserTransactionsPageProps extends PageProps {
   user: User;
   transactions: Transaction[];
+  stats?: {
+    totalTopupAmount: number;
+    completedTopupAmount: number;
+    todaysTopup: number;
+    totalOrders: number;
+    totalSales: number;
+    todaysSales: number;
+    averageDailySales: number;
+  };
 }
 
-const UserTransactionsPage = ({ auth, user, transactions }: UserTransactionsPageProps) => {
+const UserTransactionsPage = ({ auth, user, transactions, stats }: UserTransactionsPageProps) => {
+  // Fallback stats in case they're not provided
+  const defaultStats = {
+    totalTopupAmount: 0,
+    completedTopupAmount: 0,
+    todaysTopup: 0,
+    totalOrders: 0,
+    totalSales: 0,
+    todaysSales: 0,
+    averageDailySales: 0,
+  };
+  
+  const currentStats = stats ? {
+    totalTopupAmount: Number(stats.totalTopupAmount) || 0,
+    completedTopupAmount: Number(stats.completedTopupAmount) || 0,
+    todaysTopup: Number(stats.todaysTopup) || 0,
+    totalOrders: Number(stats.totalOrders) || 0,
+    totalSales: Number(stats.totalSales) || 0,
+    todaysSales: Number(stats.todaysSales) || 0,
+    averageDailySales: Number(stats.averageDailySales) || 0,
+  } : defaultStats;
   const getStatusBadge = (status: string) => {
     const statusClasses = {
       completed: "bg-green-100 text-green-800",
@@ -86,38 +115,88 @@ const UserTransactionsPage = ({ auth, user, transactions }: UserTransactionsPage
       </div>
 
       {/* Transaction Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
         <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Transactions</h3>
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Topup</h3>
             <div className="p-2 bg-blue-50 rounded-lg">
-              <FileText className="w-4 h-4 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
-        </div>
-        
-        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Amount</h3>
-            <div className="p-2 bg-green-50 rounded-lg">
-              <DollarSign className="w-4 h-4 text-green-600" />
+              <DollarSign className="w-4 h-4 text-blue-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-gray-900">
-            ₵{transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0).toFixed(2)}
+            ₵{currentStats.totalTopupAmount.toFixed(2)}
           </p>
         </div>
         
         <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Completed Amount</h3>
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <Calendar className="w-4 h-4 text-purple-600" />
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Completed Topup</h3>
+            <div className="p-2 bg-green-50 rounded-lg">
+              <Calendar className="w-4 h-4 text-green-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-gray-900">
-            ₵{transactions.filter(t => t.status === 'completed').reduce((sum, t) => sum + parseFloat(t.amount), 0).toFixed(2)}
+            ₵{currentStats.completedTopupAmount.toFixed(2)}
+          </p>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Today's Topup</h3>
+            <div className="p-2 bg-cyan-50 rounded-lg">
+              <DollarSign className="w-4 h-4 text-cyan-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            ₵{currentStats.todaysTopup.toFixed(2)}
+          </p>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Orders</h3>
+            <div className="p-2 bg-purple-50 rounded-lg">
+              <ShoppingCart className="w-4 h-4 text-purple-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            {currentStats.totalOrders}
+          </p>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Sales</h3>
+            <div className="p-2 bg-orange-50 rounded-lg">
+              <DollarSign className="w-4 h-4 text-orange-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            ₵{currentStats.totalSales.toFixed(2)}
+          </p>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Today's Sales</h3>
+            <div className="p-2 bg-emerald-50 rounded-lg">
+              <DollarSign className="w-4 h-4 text-emerald-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            ₵{currentStats.todaysSales.toFixed(2)}
+          </p>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Average Daily Sales</h3>
+            <div className="p-2 bg-indigo-50 rounded-lg">
+              <TrendingUp className="w-4 h-4 text-indigo-600" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            ₵{currentStats.averageDailySales.toFixed(2)}
           </p>
         </div>
       </div>

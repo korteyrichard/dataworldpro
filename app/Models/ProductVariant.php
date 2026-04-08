@@ -47,4 +47,9 @@ class ProductVariant extends Model
         }
         return $this->product->name . ' - ' . $this->variant_name;
     }
+
+    public function agentProducts()
+    {
+        return $this->hasMany(AgentProduct::class, 'product_variant_id');
+    }
 }

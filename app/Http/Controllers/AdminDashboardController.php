@@ -68,7 +68,7 @@ class AdminDashboardController extends Controller
         $totalWalletBalance = User::sum('wallet_balance');
 
         return Inertia::render('Admin/Users', [
-            'users' => $users->select('id', 'name', 'email', 'role', 'wallet_balance', 'created_at', 'updated_at')->paginate(15),
+            'users' => $users->select('id', 'name', 'email', 'role', 'wallet_balance', 'created_at', 'updated_at')->paginate(15)->appends($request->query()),
             'filterEmail' => $request->input('email', ''),
             'filterRole' => $request->input('role', ''),
             'userStats' => [
@@ -119,7 +119,7 @@ class AdminDashboardController extends Controller
     {
         $orders = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }, 'user'])->select('*')->latest();
+        }, 'user', 'commissions'])->select('*')->latest();
 
         if ($request->has('network') && $request->input('network') !== '') {
             $orders->where('network', 'like', '%' . $request->input('network') . '%');
@@ -137,9 +137,13 @@ class AdminDashboardController extends Controller
             $orders->where('beneficiary_number', 'like', '%' . $request->input('beneficiary_number') . '%');
         }
 
-        $paginatedOrders = $orders->paginate(50);
+        if ($request->has('order_pusher_status') && $request->input('order_pusher_status') !== '') {
+            $orders->where('order_pusher_status', $request->input('order_pusher_status'));
+        }
+
+        $paginatedOrders = $orders->paginate(50)->appends($request->query());
         
-        // Transform orders to include variant information
+        // Transform orders to include variant information and order source
         $paginatedOrders->getCollection()->transform(function($order) {
             $order->products = $order->products->map(function($product) {
                 if ($product->pivot->product_variant_id) {
@@ -150,6 +154,10 @@ class AdminDashboardController extends Controller
                 }
                 return $product;
             });
+            
+            // Determine order source based on is_guest_order flag
+            $order->order_source = $order->is_guest_order ? 'shop' : 'dashboard';
+            
             return $order;
         });
 
@@ -159,6 +167,7 @@ class AdminDashboardController extends Controller
             'orders' => $paginatedOrders,
             'filterNetwork' => $request->input('network', ''),
             'filterStatus' => $request->input('status', ''),
+            'filterOrderPusherStatus' => $request->input('order_pusher_status', ''),
             'searchOrderId' => $request->input('order_id', ''),
             'searchBeneficiaryNumber' => $request->input('beneficiary_number', ''),
             'dailyTotalSales' => $dailyTotalSales,
@@ -311,7 +320,7 @@ class AdminDashboardController extends Controller
         }
 
         return Inertia::render('Admin/Transactions', [
-            'transactions' => $transactions->paginate(10),
+            'transactions' => $transactions->paginate(10)->appends($request->query()),
             'filterType' => $request->input('type', ''),
         ]);
     }
@@ -603,9 +612,52 @@ class AdminDashboardController extends Controller
             ->latest()
             ->get();
 
+        // Calculate topup statistics
+        $totalTopupAmount = Transaction::where('user_id', $user->id)
+            ->whereIn('type', ['wallet_topup', 'admin_credit', 'topup', 'credit', 'wallet_credit'])
+            ->sum('amount');
+        
+        $completedTopupAmount = Transaction::where('user_id', $user->id)
+            ->whereIn('type', ['wallet_topup', 'admin_credit', 'topup', 'credit', 'wallet_credit'])
+            ->where('status', 'completed')
+            ->sum('amount');
+        
+        $todaysTopup = Transaction::where('user_id', $user->id)
+            ->whereIn('type', ['wallet_topup', 'admin_credit', 'topup', 'credit', 'wallet_credit'])
+            ->whereDate('created_at', today())
+            ->sum('amount');
+        
+        // Calculate order statistics
+        $totalOrders = Order::where('user_id', $user->id)->count();
+        $totalSales = Order::where('user_id', $user->id)->sum('total');
+        
+        $todaysSales = Order::where('user_id', $user->id)
+            ->whereDate('created_at', today())
+            ->sum('total');
+        
+        // Calculate average daily sales based on days since first order
+        $firstOrderDate = Order::where('user_id', $user->id)
+            ->orderBy('created_at', 'asc')
+            ->value('created_at');
+        
+        $averageDailySales = 0;
+        if ($firstOrderDate) {
+            $daysSinceFirstOrder = now()->diffInDays($firstOrderDate) + 1; // +1 to include today
+            $averageDailySales = $totalSales / $daysSinceFirstOrder;
+        }
+
         return Inertia::render('Admin/UserTransactions', [
             'user' => $user,
             'transactions' => $transactions,
+            'stats' => [
+                'totalTopupAmount' => $totalTopupAmount,
+                'completedTopupAmount' => $completedTopupAmount,
+                'todaysTopup' => $todaysTopup,
+                'totalOrders' => $totalOrders,
+                'totalSales' => $totalSales,
+                'todaysSales' => $todaysSales,
+                'averageDailySales' => $averageDailySales,
+            ],
         ]);
     }
 

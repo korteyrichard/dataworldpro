@@ -19,3 +19,9 @@ Schedule::command('orders:sync-jesco-status')->everyTenMinutes();
 
 // Sync EasyData order statuses
 Schedule::command('orders:sync-easydata-status')->everyTenMinutes();
+
+// Sync CodeCraft order statuses
+Schedule::command('orders:sync-codecraft-status')->everyTenMinutes();
+
+// Check failed orders and sync with external APIs
+Schedule::command('orders:sync-failed')->hourly();

@@ -28,7 +28,7 @@ class AFAController extends Controller
             'afa_product_id' => 'required|exists:afa_products,id',
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|regex:/^[0-9]{10}$/',
             'dob' => 'required|date',
             'occupation' => 'required|string|max:255',
             'region' => 'required|string|max:255'
@@ -42,6 +42,15 @@ class AFAController extends Controller
 
         if (auth()->user()->wallet_balance < $afaProduct->price) {
             return response()->json(['error' => 'Insufficient funds'], 400);
+        }
+
+        // Check for existing pending AFA orders with same phone number
+        $existingAFAOrder = AFAOrders::where('phone', $request->phone)
+            ->where('status', 'PENDING')
+            ->first();
+            
+        if ($existingAFAOrder) {
+            return response()->json(['error' => 'An AFA order with this phone number is already pending'], 400);
         }
 
         DB::transaction(function() use ($request, $afaProduct) {

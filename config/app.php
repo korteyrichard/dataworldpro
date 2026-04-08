@@ -135,4 +135,15 @@ return [
     'order_pusher_base_url' => env('ORDER_PUSHER_BASE_URL'),
     'order_pusher_api_key' => env('ORDER_PUSHER_API_KEY'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Order Tracking Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Minimum date for order tracking. Orders older than this date cannot be tracked.
+    |
+    */
+
+    'minimum_order_tracking_date' => env('MINIMUM_ORDER_TRACKING_DATE', '2026-01-01'),
+
 ];

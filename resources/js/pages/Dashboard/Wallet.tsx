@@ -3,6 +3,7 @@ import DashboardLayout from '../../layouts/DashboardLayout';
 import { Head, router,usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import { User } from '@/types';
+import { Youtube } from 'lucide-react';
 
 interface Transaction {
   id: number;
@@ -31,13 +32,14 @@ interface WalletPageProps extends PageProps {
     }[];
   };
   pendingTransactions: Transaction[];
+  verifyTopupVideoUrl: string;
 }
 
 
 
 
 
-export default function Wallet({ auth, transactions, pendingTransactions }: WalletPageProps) {
+export default function Wallet({ auth, transactions, pendingTransactions, verifyTopupVideoUrl }: WalletPageProps) {
      
      
 
@@ -193,12 +195,23 @@ export default function Wallet({ auth, transactions, pendingTransactions }: Wall
               GHS {auth.user.wallet_balance}
             </p>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full sm:w-auto"
-          >
-            Top Up Wallet
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full sm:w-auto"
+            >
+              Top Up Wallet
+            </button>
+            {verifyTopupVideoUrl && (
+              <button
+                onClick={() => window.open(verifyTopupVideoUrl, '_blank')}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 w-full sm:w-auto flex items-center justify-center"
+              >
+                <Youtube className="h-4 w-4 mr-2" />
+                How to Verify Top Up
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Transactions Table */}

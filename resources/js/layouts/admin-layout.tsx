@@ -2,7 +2,7 @@ import React from "react";
 import { Link, router } from "@inertiajs/react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { PanelLeft, LogOut, Settings } from "lucide-react";
+import { PanelLeft, LogOut, Settings, Cog } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import { icons } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
@@ -39,6 +39,11 @@ const adminNavigation: NavigationItem[] = [
   { name: "AFA Orders", href: route("admin.afa-orders"), icon: "FileText", current: route().current("admin.afa-orders") },
   { name: "Transactions", href: route("admin.transactions"), icon: "Receipt", current: route().current("admin.transactions") },
   { name: "Settings", href: route("profile.edit"), icon: "Settings", current: route().current("profile.edit") || route().current("password.edit") || route().current("appearance") },
+  { name: "Commissions", href: route("admin.commissions"), icon: "DollarSign", current: route().current("admin.commissions") },
+  { name: "Withdrawals", href: route("admin.withdrawals"), icon: "CreditCard", current: route().current("admin.withdrawals") },
+  { name: "Agent Settings", href: route("admin.settings"), icon: "Cog", current: route().current("admin.settings") },
+  { name: "Agents", href: route("admin.agents"), icon: "Store", current: route().current("admin.agents") },
+
 ];
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, user, header }) => {

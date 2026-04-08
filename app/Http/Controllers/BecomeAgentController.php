@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use App\Models\Transaction;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Redirect;
 
 class BecomeAgentController extends Controller
@@ -20,8 +21,8 @@ class BecomeAgentController extends Controller
 
         $reference = 'agent_' . Str::random(16);
         
-        // Calculate 1% transaction fee
-        $registrationFee = 30;
+        // Get agent upgrade fee from settings
+        $registrationFee = Setting::get('agent_upgrade_fee', 30);
         $transactionFee = $registrationFee * 0.01;
         $totalAmount = $registrationFee + $transactionFee;
         
@@ -32,14 +33,9 @@ class BecomeAgentController extends Controller
             'amount' => $registrationFee,
             'status' => 'pending',
             'type' => 'agent_fee',
-            'description' => 'API access fee of GHS 30.00 (+ GHS ' . number_format($transactionFee, 2) . ' fee)',
+            'description' => 'API access fee of GHS ' . number_format($registrationFee, 2) . ' (+ GHS ' . number_format($transactionFee, 2) . ' fee)',
             'reference' => $reference,
         ]);
-
-        // Calculate 1% transaction fee
-        $registrationFee = 30;
-        $transactionFee = $registrationFee * 0.01;
-        $totalAmount = $registrationFee + $transactionFee;
         
         // Initialize Paystack payment
         $response = Http::withHeaders([
@@ -84,9 +80,32 @@ class BecomeAgentController extends Controller
             $user = \App\Models\User::find($metadata['user_id']);
             
             if ($transaction && $transaction->status === 'pending' && $user && $user->role === 'customer') {
-                // Update user role to agent
-                $user->role = 'agent';
-                $user->save();
+                // Get referrer from the referral relationship
+                $referrerId = null;
+                $referral = $user->referredBy;
+                if ($referral) {
+                    $referrerId = $referral->referrer_id;
+                }
+                
+                // Use AgentService to upgrade user (this handles referral commissions)
+                try {
+                    $agentService = app(\App\Services\AgentService::class);
+                    $agentService->upgradeToAgent($user, $referrerId);
+                    
+                    // Generate referral code if user doesn't have one
+                    if (!$user->referral_code) {
+                        $user->generateReferralCode();
+                    }
+                } catch (\Exception $e) {
+                    // Fallback: just update role if service fails
+                    $user->role = 'agent';
+                    $user->save();
+                    
+                    // Generate referral code
+                    if (!$user->referral_code) {
+                        $user->generateReferralCode();
+                    }
+                }
                 
                 // Update transaction status
                 $transaction->update(['status' => 'completed']);

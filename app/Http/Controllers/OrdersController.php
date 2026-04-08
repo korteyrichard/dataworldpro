@@ -20,9 +20,11 @@ class OrdersController extends Controller
     // Display a listing of the user's orders
     public function index(Request $request)
     {
+        $user = Auth::user();
+        
         $query = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
-        }])->where('user_id', Auth::id());
+        }, 'commissions'])->where('user_id', $user->id);
 
         // Search by order ID
         if ($request->filled('order_id')) {
@@ -39,10 +41,18 @@ class OrdersController extends Controller
             $query->where('status', $request->status);
         }
 
-        $orders = $query->latest()->get();
+        // Filter by network
+        if ($request->filled('network')) {
+            $query->where('network', $request->network);
+        }
+
+        $orders = $query->latest()->paginate(10)->appends($request->query());
         
         // Transform orders to include variant information
-        $orders = $orders->map(function($order) {
+        $orders->getCollection()->transform(function($order) use ($user) {
+            // Add order source information for display
+            $order->order_source = $order->is_guest_order ? 'shop' : 'dashboard';
+            
             $order->products = $order->products->map(function($product) {
                 if ($product->pivot->product_variant_id) {
                     $variant = \App\Models\ProductVariant::find($product->pivot->product_variant_id);
@@ -56,7 +66,8 @@ class OrdersController extends Controller
         });
 
         return Inertia::render('Dashboard/orders', [
-            'orders' => $orders
+            'orders' => $orders,
+            'filters' => $request->only(['order_id', 'beneficiary_number', 'status', 'network'])
         ]);
     }
 

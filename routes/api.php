@@ -46,6 +46,16 @@ Route::prefix('v1')->group(function () {
 
     // 🔒 All routes inside here require Sanctum token
     Route::middleware('auth:sanctum')->group(function () {
+        // Test endpoint for debugging
+        Route::post('/test-order', function (Request $request) {
+            return response()->json([
+                'message' => 'Test endpoint working',
+                'method' => $request->method(),
+                'user' => auth()->user()->email ?? 'No user',
+                'data' => $request->all()
+            ]);
+        });
+        
         // ORDERS
         Route::get('/normal-orders', [OrderController::class, 'index']);
         Route::post('/normal-orders', [OrderController::class, 'store']);

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +26,7 @@ class WalletController extends Controller
                 ->select('id', 'amount', 'status', 'type', 'description', 'reference', 'created_at')
                 ->latest()
                 ->get(),
+            'verifyTopupVideoUrl' => Setting::get('verify_topup_video_url', '')
         ]);
     }
 

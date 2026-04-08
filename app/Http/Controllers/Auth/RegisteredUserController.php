@@ -18,9 +18,19 @@ class RegisteredUserController extends Controller
     /**
      * Show the registration page.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('auth/register');
+        $referralCode = $request->query('ref');
+        $referrer = null;
+        
+        if ($referralCode) {
+            $referrer = User::where('referral_code', $referralCode)->first();
+        }
+        
+        return Inertia::render('auth/register', [
+            'referrer' => $referrer,
+            'referralCode' => $referralCode
+        ]);
     }
 
     /**
@@ -36,6 +46,7 @@ class RegisteredUserController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'referral_code' => 'nullable|string|exists:users,referral_code'
         ]);
 
         $user = User::create([
@@ -46,10 +57,29 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Create referral record if referral_code is provided
+        $referralMessage = null;
+        if ($request->referral_code) {
+            $referrer = User::where('referral_code', $request->referral_code)->first();
+            if ($referrer) {
+                \App\Models\Referral::create([
+                    'referrer_id' => $referrer->id,
+                    'referred_id' => $user->id,
+                    'referred_at' => now()
+                ]);
+                $referralMessage = "You were successfully referred by {$referrer->name}. You can now upgrade to agent status to start earning commissions!";
+            }
+        }
+
         event(new Registered($user));
 
         Auth::login($user);
 
-        return to_route('dashboard');
+        // Redirect with appropriate success message
+        if ($referralMessage) {
+            return to_route('dashboard')->with('success', $referralMessage)->with('show_upgrade_prompt', true);
+        }
+        
+        return to_route('dashboard')->with('success', 'Welcome! Your account has been created successfully.');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -29,14 +30,8 @@ class OrderController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreOrderRequest $request)
     {
-        $request->validate([
-            'beneficiary_number' => 'required|string',
-            'network_id' => 'required|integer',
-            'size' => 'required|string'
-        ]);
-
         $user = auth()->user();
         
         // Determine product type based on user role
@@ -58,12 +53,20 @@ class OrderController extends Controller
             return response()->json(['error' => 'Size variant not available'], 404);
         }
 
+        // Check if variant is available (status check instead of quantity)
+        if ($variant->status !== 'IN STOCK') {
+            return response()->json(['error' => 'Product variant is out of stock'], 400);
+        }
+
         if (auth()->user()->wallet_balance < $variant->price) {
             return response()->json(['error' => 'Insufficient wallet balance'], 400);
         }
 
         $order = DB::transaction(function() use ($request, $product, $variant) {
             auth()->user()->decrement('wallet_balance', $variant->price);
+            
+            // Note: quantity field stores data size (e.g., "1GB"), not stock count
+            // Stock is managed via status field
             
             $order = Order::create([
                 'user_id' => auth()->id(),

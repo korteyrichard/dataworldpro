@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 export default function Welcome() {
     const { auth } = usePage<SharedData>().props;
     const [scrolled, setScrolled] = useState(false);
-    const [navOpen, setNavOpen] = useState(false); // Mobile nav state
+    const [navOpen, setNavOpen] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -15,7 +15,6 @@ export default function Welcome() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Close nav on route change or resize
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 1024) setNavOpen(false);
@@ -26,39 +25,39 @@ export default function Welcome() {
 
     return (
         <>
-            <Head title="prodataworld - become a data reseller">
+            <Head title="ProDataWorld - Premium Data Services">
                 <link rel="preconnect" href="https://fonts.bunny.net" />
-                <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700,800,900" rel="stylesheet" />
+                <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800,900" rel="stylesheet" />
             </Head>
             
-            <div className="min-h-screen bg-slate-100 overflow-x-hidden">
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
                 {/* Navigation */}
                 <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
                     scrolled 
-                        ? 'bg-white/95 backdrop-blur-lg shadow-lg' 
-                        : 'bg-white/90 backdrop-blur-lg'
-                } border-b border-white/20`}>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between items-center py-4">
-                            <div className="text-2xl  text-yellow-500 font-black  bg-clip-text ">
-                              <img src='/prodataworld.jpg' alt="Dataworld Logo" className="w-20 h-20 mb-4 mx-auto rounded-3xl" />
+                        ? 'bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50' 
+                        : 'bg-transparent'
+                }`}>
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="flex justify-between items-center py-6">
+                            <div className="flex items-center space-x-3">
+                                <img src='/prodataworld.jpg' alt="ProDataWorld" className="w-12 h-12" />
+                                <span className="text-2xl font-bold text-white">ProDataWorld</span>
                             </div>
-                            {/* Hamburger for mobile */}
+                            
                             <button
-                                className="lg:hidden flex items-center px-3 py-2 border rounded text-gray-700 border-gray-300 focus:outline-none"
+                                className="lg:hidden text-white p-2"
                                 onClick={() => setNavOpen(!navOpen)}
-                                aria-label="Toggle navigation"
                             >
-                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                 </svg>
                             </button>
-                            {/* Desktop nav */}
+                            
                             <div className="hidden lg:flex space-x-6">
                                 {auth.user ? (
                                     <Link
-                                        href={auth.user.role === 'admin' ? route('admin.dashboard') :  route('dashboard')}
-                                        className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                                        href={auth.user.role === 'admin' ? route('admin.dashboard') : route('dashboard')}
+                                        className="px-8 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors duration-200"
                                     >
                                         Dashboard
                                     </Link>
@@ -66,93 +65,76 @@ export default function Welcome() {
                                     <>
                                         <Link
                                             href={route('register')}
-                                            className="px-6 py-2 text-gray-700 font-medium rounded-full hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
+                                            className="px-8 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors duration-200"
                                         >
-                                            Register
+                                            Get Started
                                         </Link>
                                         <Link
                                             href={route('login')}
-                                            className="px-6 py-2 text-gray-700 font-medium rounded-full hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
+                                            className="px-8 py-3 border border-white text-white font-semibold hover:bg-white hover:text-slate-900 transition-colors duration-200"
                                         >
                                             Login
                                         </Link>
-                                        
                                     </>
                                 )}
                             </div>
                         </div>
-                        {/* Mobile nav dropdown */}
-                        <div className={`lg:hidden transition-all duration-300 ${navOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'} overflow-hidden`}> 
-                            <div className="flex flex-col space-y-2 pb-4">
-                                {auth.user ? (
-                                    <Link
-                                        href={auth.user.role === 'admin' ? route('admin.dashboard') :  route('dashboard')}
-                                        className="block px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-full text-center hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
-                                        onClick={() => setNavOpen(false)}
-                                    >
-                                        Dashboard
-                                    </Link>
-                                ) : (
-                                    <>
+                        
+                        {navOpen && (
+                            <div className="lg:hidden pb-6">
+                                <div className="flex flex-col space-y-4">
+                                    {auth.user ? (
                                         <Link
-                                            href={route('register')}
-                                            className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
+                                            href={auth.user.role === 'admin' ? route('admin.dashboard') : route('dashboard')}
+                                            className="px-8 py-3 bg-blue-600 text-white font-semibold text-center hover:bg-blue-700 transition-colors duration-200"
                                             onClick={() => setNavOpen(false)}
                                         >
-                                            Register
+                                            Dashboard
                                         </Link>
-                                        <Link
-                                            href={route('login')}
-                                            className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-yellow-600 hover:to-yellow-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
-                                            onClick={() => setNavOpen(false)}
-                                        >
-                                            Login
-                                        </Link>
-                                        <a
-                                            href="https://chat.whatsapp.com/JC5sasRR1eFLNY5DXF5l7S?mode=ems_share_c"
-                                            className="block px-6 py-3 text-gray-700 font-medium rounded-full text-center hover:bg-gradient-to-r hover:from-yellow-600 hover:to-yellow-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
-                                            onClick={() => setNavOpen(false)}
-                                        >
-                                            Join Community
-                                        </a>
-                                    </>
-                                )}
+                                    ) : (
+                                        <>
+                                            <Link
+                                                href={route('register')}
+                                                className="px-8 py-3 bg-blue-600 text-white font-semibold text-center hover:bg-blue-700 transition-colors duration-200"
+                                                onClick={() => setNavOpen(false)}
+                                            >
+                                                Get Started
+                                            </Link>
+                                            <Link
+                                                href={route('login')}
+                                                className="px-8 py-3 border border-white text-white font-semibold text-center hover:bg-white hover:text-slate-900 transition-colors duration-200"
+                                                onClick={() => setNavOpen(false)}
+                                            >
+                                                Login
+                                            </Link>
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </nav>
 
                 {/* Hero Section */}
-                <section className="min-h-screen flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-                    {/* Background Pattern */}
-                    <div className="absolute inset-0 opacity-30">
-                        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-1000"></div>
-                        <div className="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-white rounded-full animate-pulse delay-500"></div>
-                        <div className="absolute bottom-1/3 right-1/4 w-1 h-1 bg-white rounded-full animate-pulse delay-700"></div>
-                    </div>
+                <section className="min-h-screen flex items-center justify-center px-6 lg:px-8 relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20"></div>
                     
-                   
-                    
-
-                    <div className="max-w-4xl mx-auto z-10 relative mt-[50px]">
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-6 leading-tight">
-        
-                            <span className="bg-gradient-to-r from-yellow-300 to-yellow-500 bg-clip-text text-transparent">
-                                Simple and Affordable Data For Everyone
-                            </span>
-                            <br />
-                            
+                    <div className="max-w-5xl mx-auto text-center relative z-10 pt-20">
+                        <h1 className="text-5xl lg:text-7xl font-bold text-white mb-8 leading-tight">
+                            Premium Data Services
+                            <span className="block text-blue-400">Made Simple</span>
                         </h1>
-                        <p className="text-xl sm:text-2xl text-black mb-12 max-w-3xl mx-auto leading-relaxed">
-                             Get in touch with us and explore our affordable data plans.
-
+                        
+                        <p className="text-xl lg:text-2xl text-slate-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+                            Get reliable, affordable data bundles and become a reseller. 
+                            Join thousands of satisfied customers across Ghana.
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                        
+                        <div className="flex flex-col sm:flex-row gap-6 justify-center">
                             {auth.user ? (
                                 <Link
-                                    href={auth.user.role === 'admin' ? route('admin.dashboard') :  route('dashboard')}
-                                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-bold text-lg rounded-full hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 transform hover:scale-105"
+                                    href={auth.user.role === 'admin' ? route('admin.dashboard') : route('dashboard')}
+                                    className="px-12 py-4 bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-colors duration-200"
                                 >
                                     Go to Dashboard
                                 </Link>
@@ -160,17 +142,98 @@ export default function Welcome() {
                                 <>
                                     <Link
                                         href={route('register')}
-                                        className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold text-lg rounded-full hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 transform hover:scale-105"
+                                        className="px-12 py-4 bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-colors duration-200"
                                     >
-                                        Start Earning Today
+                                        Start Today
                                     </Link>
-                                    
+                                    <Link
+                                        href={route('login')}
+                                        className="px-12 py-4 border-2 border-white text-white font-bold text-lg hover:bg-white hover:text-slate-900 transition-colors duration-200"
+                                    >
+                                        Login
+                                    </Link>
                                 </>
                             )}
                         </div>
                     </div>
                 </section>
 
+                {/* Features Section */}
+                <section className="py-24 bg-slate-800">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="text-center mb-16">
+                            <h2 className="text-4xl font-bold text-white mb-4">Why Choose ProDataWorld?</h2>
+                            <p className="text-xl text-slate-300">Experience the difference with our premium services</p>
+                        </div>
+                        
+                        <div className="grid md:grid-cols-3 gap-8">
+                            <div className="bg-slate-700 p-8 text-center">
+                                <div className="w-16 h-16 bg-blue-600 mx-auto mb-6 flex items-center justify-center">
+                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white mb-4">Instant Delivery</h3>
+                                <p className="text-slate-300">Get your data bundles delivered instantly to any network in Ghana</p>
+                            </div>
+                            
+                            <div className="bg-slate-700 p-8 text-center">
+                                <div className="w-16 h-16 bg-green-600 mx-auto mb-6 flex items-center justify-center">
+                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white mb-4">Best Prices</h3>
+                                <p className="text-slate-300">Competitive rates that help you save money and earn more as a reseller</p>
+                            </div>
+                            
+                            <div className="bg-slate-700 p-8 text-center">
+                                <div className="w-16 h-16 bg-purple-600 mx-auto mb-6 flex items-center justify-center">
+                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white mb-4">24/7 Support</h3>
+                                <p className="text-slate-300">Round-the-clock customer support to help you whenever you need assistance</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* CTA Section */}
+                <section className="py-24 bg-gradient-to-r from-blue-600 to-purple-600">
+                    <div className="max-w-4xl mx-auto text-center px-6 lg:px-8">
+                        <h2 className="text-4xl lg:text-5xl font-bold text-white mb-8">
+                            Ready to Get Started?
+                        </h2>
+                        <p className="text-xl text-blue-100 mb-12">
+                            Join thousands of satisfied customers and start your data business today
+                        </p>
+                        {!auth.user && (
+                            <Link
+                                href={route('register')}
+                                className="inline-block px-12 py-4 bg-white text-blue-600 font-bold text-lg hover:bg-gray-100 transition-colors duration-200"
+                            >
+                                Create Account Now
+                            </Link>
+                        )}
+                    </div>
+                </section>
+
+                {/* Footer */}
+                <footer className="bg-slate-900 py-12">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="flex flex-col md:flex-row justify-between items-center">
+                            <div className="flex items-center space-x-3 mb-4 md:mb-0">
+                                <img src='/prodataworld.jpg' alt="ProDataWorld" className="w-10 h-10" />
+                                <span className="text-xl font-bold text-white">ProDataWorld</span>
+                            </div>
+                            <div className="text-slate-400">
+                                <p>&copy; 2024 ProDataWorld. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
             </div>
         </>
     );

@@ -14,19 +14,28 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AFAController;
 use App\Http\Controllers\ApiDocsController;
 use App\Http\Controllers\TermsController;
+use App\Http\Controllers\AgentController;
+use App\Http\Controllers\ShopController;
+use App\Http\Controllers\AdminController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
 Route::get('/become_an_agent', function () {
-        return Inertia::render('become_an_agent');
+        $agentFee = \App\Models\Setting::get('agent_upgrade_fee', 30);
+        return Inertia::render('become_an_agent', [
+            'agentFee' => (float) $agentFee
+        ]);
     })->name('become_an_agent');
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/become_an_agent', [BecomeAgentController::class, 'update'])->name('become_an_agent.update');
 });
 Route::get('/agent/callback', [BecomeAgentController::class, 'handleAgentCallback'])->name('agent.callback');
+
+// Upgrade to agent route - accessible to both guests and authenticated users
+Route::get('/upgrade-to-agent', [AgentController::class, 'showUpgrade'])->name('upgrade.agent.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -55,8 +64,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Bundle sizes API
     Route::get('/api/bundle-sizes', [DashboardController::class, 'getBundleSizes'])->name('api.bundle-sizes');
 
-    // ❌ REMOVED THE DUPLICATE ADMIN ROUTE FROM HERE
-    // Route::get('/admin/dashboard', [\App\Http\Controllers\AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    // Agent routes
+    Route::middleware('role:agent')->prefix('agent')->name('agent.')->group(function () {
+        Route::get('/dashboard', [AgentController::class, 'dashboard'])->name('dashboard');
+        Route::get('/commissions', [AgentController::class, 'commissions'])->name('commissions');
+        Route::get('/referrals', [AgentController::class, 'referrals'])->name('referrals');
+        Route::get('/withdrawals', [AgentController::class, 'withdrawals'])->name('withdrawals');
+        Route::get('/shop', [AgentController::class, 'shop'])->name('shop');
+        Route::post('/shop', [AgentController::class, 'createShop'])->name('shop.create');
+        Route::put('/shop', [AgentController::class, 'updateShop'])->name('shop.update');
+        Route::post('/products', [AgentController::class, 'addProduct'])->name('products.add');
+        Route::delete('/products/{agentProduct}', [AgentController::class, 'removeProduct'])->name('products.remove');
+        Route::post('/withdrawals', [AgentController::class, 'requestWithdrawal'])->name('withdrawals.request');
+    });
+    
+    // Upgrade to agent routes (available to authenticated users only)
+    Route::post('/upgrade-to-agent', [AgentController::class, 'upgradeToAgent'])->name('upgrade.agent');
 });
 
 // Checkout route
@@ -102,6 +125,14 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     
     // Alert routes
     Route::resource('alerts', \App\Http\Controllers\Admin\AlertController::class);
+    
+    // Agent system admin routes
+    Route::get('agents', [AdminController::class, 'agents'])->name('agents');
+    Route::get('commissions', [AdminController::class, 'commissions'])->name('commissions');
+    Route::get('withdrawals', [AdminController::class, 'withdrawals'])->name('withdrawals');
+    Route::post('withdrawals/{withdrawal}/process', [AdminController::class, 'processWithdrawal'])->name('withdrawals.process');
+    Route::get('settings', [AdminController::class, 'settings'])->name('settings');
+    Route::post('settings', [AdminController::class, 'updateSettings'])->name('settings.update');
 });
 
 // Paystack payment routes
@@ -117,6 +148,17 @@ Route::get('/payment/failed', function () { return 'Payment Failed!'; })->name('
 Route::get('/test-alert', function () {
     return view('test-alert');
 })->name('test.alert');
+
+// Public shop routes
+Route::get('/shop/{slug}', [ShopController::class, 'show'])->name('shop.show');
+Route::post('/shop/{slug}/add-to-cart', [ShopController::class, 'addToCart'])->name('shop.add-to-cart');
+Route::get('/shop/{slug}/order-success/{order}', [ShopController::class, 'orderSuccess'])->name('shop.order-success');
+Route::post('/shop/{slug}/track-order', [ShopController::class, 'findOrder'])->name('shop.find-order');
+Route::post('/shop/{slug}/create-order-from-payment', [ShopController::class, 'createOrderFromPayment'])->name('shop.create-order-from-payment');
+
+// Guest payment routes
+Route::post('/guest/payment/initialize', [\App\Http\Controllers\GuestPaymentController::class, 'initialize'])->name('guest.payment.initialize');
+Route::get('/guest/payment/callback', [\App\Http\Controllers\GuestPaymentController::class, 'callback'])->name('guest.payment.callback');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

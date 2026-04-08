@@ -8,38 +8,28 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next, string $role): Response
     {
-        // Check if user is authenticated
-        if (!auth()->check()) {
+        if (!$request->user()) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
             return redirect()->route('login');
         }
 
-        $user = auth()->user();
-
-        // Debug: Log the role check
-        \Log::info('Role check', [
-            'required_role' => $role,
-            'user_role' => $user->role,
-            'user_id' => $user->id,
-            'user_email' => $user->email
-        ]);
-
-        // Check if user has the required role
-        if (empty($user->role) || $user->role !== $role) {
-            \Log::warning('Access denied - insufficient role', [
-                'required_role' => $role,
-                'user_role' => $user->role ?? 'NULL',
-                'user_id' => $user->id
-            ]);
-            
-            abort(403, 'Access denied. You need "' . $role . '" role to access this page.');
+        // Allow access if user is not a customer (for agent routes)
+        if ($role === 'agent' && $request->user()->role !== 'customer') {
+            return $next($request);
         }
-
-        \Log::info('Role check passed', ['user_id' => $user->id, 'role' => $role]);
+        
+        // Standard role check for other routes
+        if ($request->user()->role !== $role) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Access denied'], 403);
+            }
+            
+            return redirect()->route('dashboard')->with('error', 'Access denied.');
+        }
 
         return $next($request);
     }

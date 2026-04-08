@@ -87,6 +87,11 @@ class DashboardController extends Controller
             'pendingOrders' => $pendingOrdersCount ?? 0,
             'processingOrders' => $processingOrdersCount ?? 0,
             'activeAlert' => $activeAlert,
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
+                'show_upgrade_prompt' => session('show_upgrade_prompt', false)
+            ]
         ]);
     }
 
