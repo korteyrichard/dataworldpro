@@ -24,7 +24,7 @@ interface Order {
   beneficiary_number?: string;
   payment_reference?: string;
   order_pusher_status: 'disabled' | 'success' | 'failed' | null | undefined;
-  order_source?: 'shop' | 'dashboard';
+  order_source?: 'shop' | 'dashboard' | 'api';
   commissions?: Array<{
     id: number;
     base_price: number;
@@ -65,6 +65,7 @@ interface AdminOrdersPageProps {
   filterNetwork: string;
   filterStatus: string;
   filterOrderPusherStatus: string;
+  filterOrderSource: string;
   searchOrderId: string;
   searchBeneficiaryNumber: string;
   dailyTotalSales: number;
@@ -78,6 +79,7 @@ export default function AdminOrders() {
     filterNetwork: initialNetworkFilter,
     filterStatus: initialStatusFilter,
     filterOrderPusherStatus: initialOrderPusherStatusFilter,
+    filterOrderSource: initialOrderSourceFilter,
     searchOrderId: initialSearchOrderId,
     searchBeneficiaryNumber: initialSearchBeneficiaryNumber,
     dailyTotalSales,
@@ -89,6 +91,7 @@ export default function AdminOrders() {
   const [orderPusherStatusFilter, setOrderPusherStatusFilter] = useState(initialOrderPusherStatusFilter || '');
   const [searchOrderId, setSearchOrderId] = useState(initialSearchOrderId || '');
   const [searchBeneficiaryNumber, setSearchBeneficiaryNumber] = useState(initialSearchBeneficiaryNumber || '');
+  const [orderSourceFilter, setOrderSourceFilter] = useState(initialOrderSourceFilter || '');
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState('');
 
@@ -116,6 +119,13 @@ export default function AdminOrders() {
       if (value) params.order_pusher_status = value;
     } else if (orderPusherStatusFilter) {
       params.order_pusher_status = orderPusherStatusFilter;
+    }
+    
+    if (filterName === 'order_source') {
+      setOrderSourceFilter(value);
+      if (value) params.order_source = value;
+    } else if (orderSourceFilter) {
+      params.order_source = orderSourceFilter;
     }
     
     router.get(route('admin.orders'), params, { preserveState: true, replace: true });
@@ -283,7 +293,7 @@ export default function AdminOrders() {
         )}
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Network</label>
             <select
@@ -323,6 +333,20 @@ export default function AdminOrders() {
               <option value="">--select API status--</option>
               <option value="success">Success</option>
               <option value="failed">Failed</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Order Source</label>
+            <select
+              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
+              value={orderSourceFilter}
+              onChange={(e) => handleFilterChange('order_source', e.target.value)}
+            >
+              <option value="">--select source--</option>
+              <option value="dashboard">Dashboard</option>
+              <option value="shop">Shop</option>
+              <option value="api">API</option>
             </select>
           </div>
 
@@ -402,6 +426,21 @@ export default function AdminOrders() {
                             {order.order_source === 'shop' && (
                               <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
                                 Shop Order
+                              </span>
+                            )}
+                            {order.order_source === 'api' && (
+                              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                                API Order
+                              </span>
+                            )}
+                            {order.order_source === 'dashboard' && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                Dashboard Order
+                              </span>
+                            )}
+                            {!order.order_source && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">
+                                Legacy Order
                               </span>
                             )}
                           </div>

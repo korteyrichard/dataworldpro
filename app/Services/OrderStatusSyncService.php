@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class OrderStatusSyncService
 {
     private $codeCraftAgentEmail = 'ammababaah@gmail.com';
-    private $mtnApiKey = 'b2fe77274d245a52c7bf4c03ba96f46c2bed9be3';
+    private $mtnApiKey = '';
 
     public function syncOrderStatuses()
     {

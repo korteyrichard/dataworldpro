@@ -17,12 +17,12 @@ class RoleMiddleware
             return redirect()->route('login');
         }
 
-        // Allow access if user is not a customer (for agent routes)
-        if ($role === 'agent' && $request->user()->role !== 'customer') {
+        // Allow all authenticated users to access agent routes (shop features)
+        if ($role === 'agent') {
             return $next($request);
         }
         
-        // Standard role check for other routes
+        // Standard role check for other routes (admin, etc.)
         if ($request->user()->role !== $role) {
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'Access denied'], 403);

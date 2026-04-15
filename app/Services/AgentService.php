@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Models\AgentShop;
+use App\Models\UserShop;
 use App\Models\AgentProduct;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -12,15 +12,15 @@ use Illuminate\Support\Facades\Log;
 
 class AgentService
 {
-    public function createAgentShop(User $user, string $shopName, string $primaryColor = '#3B82F6', string $backgroundColor = '#F1F5F9'): AgentShop
+    public function createAgentShop(User $user, string $shopName, string $primaryColor = '#3B82F6', string $backgroundColor = '#F1F5F9'): UserShop
     {
-        if ($user->agentShop) {
-            throw new \Exception('User already has an agent shop');
+        if ($user->shop) {
+            throw new \Exception('User already has a shop');
         }
 
         $slug = $this->generateUniqueSlug($shopName);
 
-        return AgentShop::create([
+        return UserShop::create([
             'user_id' => $user->id,
             'name' => $shopName,
             'slug' => $slug,
@@ -30,7 +30,7 @@ class AgentService
         ]);
     }
 
-    public function addProductToShop(AgentShop $shop, int $productId, ?int $variantId, float $agentPrice): AgentProduct
+    public function addProductToShop(UserShop $shop, int $productId, ?int $variantId, float $agentPrice): AgentProduct
     {
         $product = Product::findOrFail($productId);
         $variant = $variantId ? ProductVariant::findOrFail($variantId) : null;
@@ -124,7 +124,7 @@ class AgentService
         $slug = $baseSlug;
         $counter = 1;
 
-        while (AgentShop::where('slug', $slug)->exists()) {
+        while (UserShop::where('slug', $slug)->exists()) {
             $slug = $baseSlug . '-' . $counter;
             $counter++;
         }
@@ -132,10 +132,13 @@ class AgentService
         return $slug;
     }
 
-    public function getShopProducts(AgentShop $shop)
+    public function getShopProducts(UserShop $shop)
     {
         return $shop->activeProducts()
             ->with(['product', 'productVariant'])
+            ->whereHas('productVariant', function($query) {
+                $query->where('status', 'IN STOCK');
+            })
             ->get()
             ->map(function ($agentProduct) {
                 return [

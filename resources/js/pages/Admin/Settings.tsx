@@ -55,17 +55,17 @@ export default function Settings({ auth, settings }: Props) {
     return (
         <AdminLayout
             user={auth.user}
-            header="Agent Settings"
+            header="Store Management Settings"
         >
-            <Head title="Agent Settings" />
+            <Head title="Store Management Settings" />
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Agent System Settings</CardTitle>
+                            <CardTitle>Store Management Settings</CardTitle>
                             <CardDescription>
-                                Configure settings for the agent system including withdrawal limits, referral amounts, upgrade fees, and tutorial video URLs.
+                                Configure settings for the store management system including withdrawal limits, referral amounts, upgrade fees, and tutorial video URLs.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

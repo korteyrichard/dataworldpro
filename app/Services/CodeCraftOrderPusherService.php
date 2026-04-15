@@ -10,7 +10,7 @@ use App\Services\MoolreSmsService;
 
 class CodeCraftOrderPusherService
 {
-    private $apiKey = '250905051915-|9zeDO-YdLmuU-rCa?vb-TqFnqX-TcWFy3';
+    private $apiKey = '';
     private $baseUrl = 'https://api.codecraftnetwork.com/api';
 
     public function pushOrderToApi(Order $order)
@@ -79,10 +79,18 @@ class CodeCraftOrderPusherService
                     $order->update($updateData);
                     
                     // Send SMS if Ishare order completed and user has phone
-                    if ($network === 'AT' && $order->user && $order->user->phone) {
-                        $smsService = new MoolreSmsService();
-                        $message = "Your order #{$order->id} for {$order->products->first()->name} to {$item->pivot->beneficiary_number} has been completed. Total: GHS " . number_format($order->total, 2);
-                        $smsService->sendSms($order->user->phone, $message);
+                    try {
+                        if ($network === 'AT' && $order->user && $order->user->phone) {
+                            $smsService = new MoolreSmsService();
+                            $productName = $item->name ?? 'Ishare Data';
+                            $message = "Your order #{$order->id} for {$productName} to {$item->pivot->beneficiary_number} has been completed. Total: GHS " . number_format($order->total, 2);
+                            $smsService->sendSms($order->user->phone, $message);
+                        }
+                    } catch (\Exception $smsException) {
+                        Log::warning('SMS sending failed but order was successful', [
+                            'order_id' => $order->id,
+                            'error' => $smsException->getMessage()
+                        ]);
                     }
                     
                     Log::info('Order sent successfully to CodeCraft', ['reference_id' => $responseData['reference_id']]);

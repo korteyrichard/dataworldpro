@@ -42,7 +42,7 @@ const adminNavigation: NavigationItem[] = [
   { name: "Commissions", href: route("admin.commissions"), icon: "DollarSign", current: route().current("admin.commissions") },
   { name: "Withdrawals", href: route("admin.withdrawals"), icon: "CreditCard", current: route().current("admin.withdrawals") },
   { name: "Agent Settings", href: route("admin.settings"), icon: "Cog", current: route().current("admin.settings") },
-  { name: "Agents", href: route("admin.agents"), icon: "Store", current: route().current("admin.agents") },
+  { name: "Stores", href: route("admin.agents"), icon: "Store", current: route().current("admin.agents") },
 
 ];
 

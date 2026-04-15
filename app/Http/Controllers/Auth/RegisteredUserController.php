@@ -58,7 +58,6 @@ class RegisteredUserController extends Controller
         ]);
 
         // Create referral record if referral_code is provided
-        $referralMessage = null;
         if ($request->referral_code) {
             $referrer = User::where('referral_code', $request->referral_code)->first();
             if ($referrer) {
@@ -67,7 +66,6 @@ class RegisteredUserController extends Controller
                     'referred_id' => $user->id,
                     'referred_at' => now()
                 ]);
-                $referralMessage = "You were successfully referred by {$referrer->name}. You can now upgrade to agent status to start earning commissions!";
             }
         }
 
@@ -75,11 +73,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        // Redirect with appropriate success message
-        if ($referralMessage) {
-            return to_route('dashboard')->with('success', $referralMessage)->with('show_upgrade_prompt', true);
-        }
-        
         return to_route('dashboard')->with('success', 'Welcome! Your account has been created successfully.');
     }
 }

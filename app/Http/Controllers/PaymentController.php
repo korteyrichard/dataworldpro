@@ -20,7 +20,7 @@ class PaymentController extends Controller
             'Content-Type' => 'application/json',
         ])->post('https://api.paystack.co/transaction/initialize', [
             'email' => $request->email,
-            'amount' => $request->amount * 100, // Convert to kobo
+            'amount' => (int) round($request->amount * 100), // Convert to kobo with proper rounding
             'callback_url' => route('payment.callback'),
             'reference' => Str::random(16)
         ]);

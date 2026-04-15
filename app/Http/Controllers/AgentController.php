@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AgentShop;
+use App\Models\UserShop;
 use App\Models\Product;
 use App\Models\Withdrawal;
 use App\Models\Setting;
@@ -22,10 +22,6 @@ class AgentController extends Controller
     {
         $user = Auth::user();
         
-        if ($user->isCustomer()) {
-            return redirect()->route('dashboard')->with('error', 'Access denied.');
-        }
-
         $stats = [
             'total_sales' => 0,
             'pending_commissions' => 0,
@@ -40,7 +36,7 @@ class AgentController extends Controller
             // Use default stats if service fails
         }
         
-        $shop = $user->agentShop;
+        $shop = $user->shop;
         
         // Generate referral code if user doesn't have one
         if (!$user->referral_code) {
@@ -65,10 +61,6 @@ class AgentController extends Controller
         ]);
 
         $user = Auth::user();
-        
-        if ($user->isCustomer()) {
-            return redirect()->back()->with('error', 'Access denied');
-        }
 
         try {
             $shop = $this->agentService->createAgentShop(
@@ -92,7 +84,7 @@ class AgentController extends Controller
         ]);
 
         $user = Auth::user();
-        $shop = $user->agentShop;
+        $shop = $user->shop;
 
         if (!$shop) {
             return redirect()->back()->with('error', 'No shop found');
@@ -115,7 +107,7 @@ class AgentController extends Controller
     public function removeProduct(Request $request, $agentProductId)
     {
         $user = Auth::user();
-        $shop = $user->agentShop;
+        $shop = $user->shop;
 
         if (!$shop) {
             return redirect()->back()->with('error', 'No shop found');
@@ -136,7 +128,10 @@ class AgentController extends Controller
         $minWithdrawal = Setting::get('minimum_withdrawal_amount', 10);
         
         $request->validate([
-            'amount' => "required|numeric|min:{$minWithdrawal}"
+            'amount' => "required|numeric|min:{$minWithdrawal}",
+            'phone_number' => 'required|string|regex:/^[0-9]{10}$/',
+            'network' => 'required|in:MTN,TELECEL',
+            'mobile_money_name' => 'required|string|max:255'
         ]);
 
         $user = Auth::user();
@@ -155,12 +150,15 @@ class AgentController extends Controller
         $withdrawal = Withdrawal::create([
             'agent_id' => $user->id,
             'amount' => $request->amount,
+            'phone_number' => $request->phone_number,
+            'network' => $request->network,
+            'mobile_money_name' => $request->mobile_money_name,
             'withdrawal_fee' => $withdrawalFee,
             'net_amount' => $request->amount - $withdrawalFee,
             'status' => 'pending'
         ]);
 
-        return redirect()->back()->with('success', 'Withdrawal request submitted successfully. You will receive ₵' . number_format($withdrawal->net_amount, 2) . ' after approval.');
+        return redirect()->back()->with('success', 'Withdrawal request submitted successfully. You will receive ₵' . number_format($withdrawal->net_amount, 2) . ' to ' . $request->network . ' (' . $request->phone_number . ') after approval.');
     }
 
     public function showUpgrade(Request $request)
@@ -296,17 +294,22 @@ class AgentController extends Controller
     public function shop()
     {
         $user = Auth::user();
-        $shop = $user->agentShop;
+        $shop = $user->shop;
         $products = $shop ? $this->agentService->getShopProducts($shop) : [];
         
         // Get available products based on user role
         $availableProducts = collect();
         
         if ($user->role === 'agent') {
-            // Agents see only products with product_type = 'agent_product'
-            $availableProducts = \App\Models\Product::with('variants')
+            // Agents see only products with product_type = 'agent_product' and variants that are in stock
+            $availableProducts = \App\Models\Product::with(['variants' => function($query) {
+                    $query->where('status', 'IN STOCK');
+                }])
                 ->where('product_type', 'agent_product')
                 ->get()
+                ->filter(function($product) {
+                    return $product->variants->count() > 0; // Only include products with in-stock variants
+                })
                 ->map(function($product) {
                     return [
                         'id' => $product->id,
@@ -323,7 +326,7 @@ class AgentController extends Controller
                     ];
                 });
         } elseif ($user->role === 'admin') {
-            // Admin sees all products
+            // Admin sees all products with all variants (including out of stock)
             $availableProducts = \App\Models\Product::with('variants')->get()->map(function($product) {
                 return [
                     'id' => $product->id,
@@ -339,13 +342,41 @@ class AgentController extends Controller
                     })
                 ];
             });
+        } else {
+            // Customers see customer products with only in-stock variants
+            $availableProducts = \App\Models\Product::with(['variants' => function($query) {
+                    $query->where('status', 'IN STOCK');
+                }])
+                ->where('product_type', 'customer_product')
+                ->get()
+                ->filter(function($product) {
+                    return $product->variants->count() > 0; // Only include products with in-stock variants
+                })
+                ->map(function($product) {
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'product_type' => $product->product_type,
+                        'network' => $product->network,
+                        'variants' => $product->variants->map(function($variant) {
+                            return [
+                                'id' => $variant->id,
+                                'name' => $variant->getVariantNameAttribute(),
+                                'price' => $variant->price
+                            ];
+                        })
+                    ];
+                });
         }
-        // Customers don't have access to this page, but if they did, they would see customer_product types
         
         return inertia('Agent/Shop', [
             'shop' => $shop,
             'products' => $products,
-            'availableProducts' => $availableProducts
+            'availableProducts' => $availableProducts,
+            'domains' => [
+                'main' => config('app.main_domain', 'localhost'),
+                'second' => config('app.second_domain')
+            ]
         ]);
     }
 
@@ -358,7 +389,7 @@ class AgentController extends Controller
         ]);
 
         $user = Auth::user();
-        $shop = $user->agentShop;
+        $shop = $user->shop;
         
         if (!$shop) {
             return redirect()->back()->with('error', 'Shop not found');

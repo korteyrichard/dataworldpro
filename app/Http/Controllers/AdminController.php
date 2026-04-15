@@ -7,6 +7,7 @@ use App\Models\Commission;
 use App\Models\ReferralCommission;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Models\UserShop;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,7 +19,7 @@ class AdminController extends Controller
             return redirect()->route('home')->with('error', 'Access denied');
         }
 
-        $withdrawals = Withdrawal::with('agent')
+        $withdrawals = Withdrawal::with('agent.shop')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -186,54 +187,98 @@ class AdminController extends Controller
             return redirect()->route('home')->with('error', 'Access denied');
         }
 
-        $agents = \App\Models\User::whereIn('role', ['agent', 'admin'])
-            ->with(['agentShop', 'commissions', 'withdrawals'])
+        // Get all users who have shops, regardless of role
+        $storeOwners = \App\Models\User::whereHas('shop')
+            ->with(['shop', 'commissions', 'withdrawals'])
             ->withCount(['commissions', 'withdrawals'])
             ->latest()
             ->get()
-            ->map(function ($agent) {
-                $totalCommissions = $agent->commissions->sum(function ($commission) {
+            ->map(function ($user) {
+                $totalCommissions = $user->commissions->sum(function ($commission) {
                     return $commission->commission_amount * $commission->quantity;
                 });
-                $availableCommissions = $agent->commissions->where('status', 'available')->sum(function ($commission) {
+                $availableCommissions = $user->commissions->where('status', 'available')->sum(function ($commission) {
                     return $commission->commission_amount * $commission->quantity;
                 });
-                $totalWithdrawals = $agent->withdrawals->sum('amount');
-                $pendingWithdrawals = $agent->withdrawals->where('status', 'pending')->sum('amount');
+                $totalWithdrawals = $user->withdrawals->sum('amount');
+                $pendingWithdrawals = $user->withdrawals->where('status', 'pending')->sum('amount');
 
                 return [
-                    'id' => $agent->id,
-                    'name' => $agent->name,
-                    'email' => $agent->email,
-                    'role' => $agent->role,
-                    'created_at' => $agent->created_at,
-                    'agent_shop' => $agent->agentShop ? [
-                        'name' => $agent->agentShop->name,
-                        'slug' => $agent->agentShop->slug,
-                        'is_active' => $agent->agentShop->is_active,
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'created_at' => $user->created_at,
+                    'agent_shop' => $user->shop ? [
+                        'name' => $user->shop->name,
+                        'slug' => $user->shop->slug,
+                        'is_active' => $user->shop->is_active,
                     ] : null,
                     'stats' => [
                         'total_commissions' => (float) $totalCommissions,
                         'available_commissions' => (float) $availableCommissions,
                         'total_withdrawals' => (float) $totalWithdrawals,
                         'pending_withdrawals' => (float) $pendingWithdrawals,
-                        'commissions_count' => $agent->commissions_count,
-                        'withdrawals_count' => $agent->withdrawals_count,
+                        'commissions_count' => $user->commissions_count,
+                        'withdrawals_count' => $user->withdrawals_count,
                     ]
                 ];
             });
 
+        // Also get admins (even if they don't have shops) for management purposes
+        $admins = \App\Models\User::where('role', 'admin')
+            ->whereDoesntHave('shop') // Only admins without shops (to avoid duplicates)
+            ->with(['shop', 'commissions', 'withdrawals'])
+            ->withCount(['commissions', 'withdrawals'])
+            ->latest()
+            ->get()
+            ->map(function ($admin) {
+                $totalCommissions = $admin->commissions->sum(function ($commission) {
+                    return $commission->commission_amount * $commission->quantity;
+                });
+                $availableCommissions = $admin->commissions->where('status', 'available')->sum(function ($commission) {
+                    return $commission->commission_amount * $commission->quantity;
+                });
+                $totalWithdrawals = $admin->withdrawals->sum('amount');
+                $pendingWithdrawals = $admin->withdrawals->where('status', 'pending')->sum('amount');
+
+                return [
+                    'id' => $admin->id,
+                    'name' => $admin->name,
+                    'email' => $admin->email,
+                    'role' => $admin->role,
+                    'created_at' => $admin->created_at,
+                    'agent_shop' => null,
+                    'stats' => [
+                        'total_commissions' => (float) $totalCommissions,
+                        'available_commissions' => (float) $availableCommissions,
+                        'total_withdrawals' => (float) $totalWithdrawals,
+                        'pending_withdrawals' => (float) $pendingWithdrawals,
+                        'commissions_count' => $admin->commissions_count,
+                        'withdrawals_count' => $admin->withdrawals_count,
+                    ]
+                ];
+            });
+
+        // Combine store owners and admins
+        $allUsers = $storeOwners->concat($admins);
+
         // Calculate overall stats
+        $totalStores = \App\Models\UserShop::count();
+        $activeStores = \App\Models\UserShop::where('is_active', true)->count();
+        $totalStoreOwners = \App\Models\User::whereHas('shop')->count();
+        $totalAdmins = \App\Models\User::where('role', 'admin')->count();
+        
         $overallStats = [
-            'total_agents' => $agents->where('role', 'agent')->count(),
-            'total_admins' => $agents->where('role', 'admin')->count(),
-            'agents_with_shops' => $agents->where('role', 'agent')->whereNotNull('agent_shop')->count(),
-            'total_agent_earnings' => $agents->sum('stats.total_commissions'),
-            'total_pending_withdrawals' => $agents->sum('stats.pending_withdrawals'),
+            'total_agents' => $totalStoreOwners, // Total users with stores
+            'total_admins' => $totalAdmins,
+            'agents_with_shops' => $activeStores, // Active stores
+            'total_agent_earnings' => $allUsers->sum('stats.total_commissions'),
+            'total_pending_withdrawals' => $allUsers->sum('stats.pending_withdrawals'),
         ];
 
         return inertia('Admin/Agents', [
-            'agents' => $agents,
+            'agents' => $allUsers,
             'stats' => $overallStats
         ]);
     }
@@ -244,7 +289,7 @@ class AdminController extends Controller
             return redirect()->route('home')->with('error', 'Access denied');
         }
 
-        $commissions = \App\Models\Commission::with(['agent', 'product', 'order'])
+        $commissions = \App\Models\Commission::with(['agent.shop', 'product', 'order'])
             ->latest()
             ->paginate(50);
 
@@ -307,6 +352,6 @@ class AdminController extends Controller
         Setting::set('track_order_video_url', $request->track_order_video_url);
         Setting::set('verify_topup_video_url', $request->verify_topup_video_url);
 
-        return redirect()->back()->with('success', 'Settings updated successfully');
+        return redirect()->back()->with('success', 'Store management settings updated successfully');
     }
 }

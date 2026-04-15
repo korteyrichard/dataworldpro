@@ -10,6 +10,9 @@ class Withdrawal extends Model
     protected $fillable = [
         'agent_id',
         'amount',
+        'phone_number',
+        'network',
+        'mobile_money_name',
         'withdrawal_fee',
         'net_amount',
         'status',

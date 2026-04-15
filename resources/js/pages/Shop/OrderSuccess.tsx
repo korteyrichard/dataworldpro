@@ -39,7 +39,12 @@ interface OrderSuccessProps {
 export default function OrderSuccess({ order, agent, shop }: OrderSuccessProps) {
     return (
         <>
-            <Head title="Order Successful" />
+            <Head title="Order Successful">
+                <meta name="robots" content="noindex, nofollow" />
+                <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+                <meta httpEquiv="Pragma" content="no-cache" />
+                <meta httpEquiv="Expires" content="0" />
+            </Head>
             
             <div className="min-h-screen" style={{ backgroundColor: shop.background_color || '#F1F5F9' }}>
                 {/* Header */}
@@ -68,7 +73,15 @@ export default function OrderSuccess({ order, agent, shop }: OrderSuccessProps) 
                                 <CheckCircle className="h-12 w-12 text-green-600" />
                             </div>
                             <h2 className="text-3xl font-bold text-gray-900 mb-2">Order Successful!</h2>
-                            <p className="text-gray-600">Your order has been placed and is being processed.</p>
+                            <p className="text-gray-600 mb-4">Your order has been placed and is being processed.</p>
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-md mx-auto">
+                                <p className="text-green-800 text-sm font-medium">
+                                    ✅ Payment confirmed and order created successfully!
+                                </p>
+                                <p className="text-green-700 text-xs mt-1">
+                                    You can bookmark this page for your records.
+                                </p>
+                            </div>
                         </div>
 
                         {/* Order Details */}
@@ -180,6 +193,14 @@ export default function OrderSuccess({ order, agent, shop }: OrderSuccessProps) 
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Button 
+                                onClick={() => window.location.reload()}
+                                variant="outline"
+                                className="flex items-center gap-2"
+                            >
+                                <CheckCircle className="h-4 w-4" />
+                                View Order Details
+                            </Button>
+                            <Button 
                                 onClick={() => window.location.href = `/shop/${shop.slug}`}
                                 className="flex items-center gap-2 text-white"
                                 style={{ backgroundColor: shop.primary_color || '#3B82F6' }}
@@ -191,15 +212,7 @@ export default function OrderSuccess({ order, agent, shop }: OrderSuccessProps) 
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="bg-white border-t mt-16">
-                    <div className="container mx-auto px-4 py-6">
-                        <div className="text-center text-gray-600">
-                            <p>Thank you for shopping with <span className="font-semibold">{shop.name}</span></p>
-                            <p className="text-sm mt-1">Powered by <span className="font-semibold text-blue-600">ProDataWorld</span></p>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </>
     );

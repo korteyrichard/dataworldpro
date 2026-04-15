@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AgentShop;
+use App\Models\UserShop;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Services\AgentService;
+use App\Services\OrderPusherService;
+use App\Services\CodeCraftOrderPusherService;
+use App\Services\JescoOrderPusherService;
+use App\Services\EasyDataOrderPusherService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -15,9 +19,9 @@ class ShopController extends Controller
 
     public function show(string $slug)
     {
-        $shop = AgentShop::where('slug', $slug)
+        $shop = UserShop::where('slug', $slug)
             ->where('is_active', true)
-            ->with('agent')
+            ->with('user')
             ->firstOrFail();
 
         $products = $this->agentService->getShopProducts($shop);
@@ -26,8 +30,8 @@ class ShopController extends Controller
             'shop' => $shop,
             'products' => $products,
             'agent' => [
-                'name' => $shop->agent->name,
-                'phone' => $shop->agent->phone
+                'name' => $shop->user->name,
+                'phone' => $shop->user->phone
             ],
             'trackOrderVideoUrl' => Setting::get('track_order_video_url', '')
         ]);
@@ -40,7 +44,7 @@ class ShopController extends Controller
             'quantity' => 'required|integer|min:1'
         ]);
 
-        $shop = AgentShop::where('slug', $slug)->firstOrFail();
+        $shop = UserShop::where('slug', $slug)->firstOrFail();
         
         // Store agent_id in session for checkout
         session(['agent_id' => $shop->user_id]);
@@ -53,9 +57,9 @@ class ShopController extends Controller
 
     public function orderSuccess(string $slug, Order $order)
     {
-        $shop = AgentShop::where('slug', $slug)
+        $shop = UserShop::where('slug', $slug)
             ->where('is_active', true)
-            ->with('agent')
+            ->with('user')
             ->firstOrFail();
 
         // Verify the order belongs to this shop
@@ -90,7 +94,7 @@ class ShopController extends Controller
                 })
             ],
             'agent' => [
-                'name' => $shop->agent->name
+                'name' => $shop->user->name
             ],
             'shop' => [
                 'name' => $shop->name,
@@ -127,14 +131,19 @@ class ShopController extends Controller
             'beneficiary_number' => 'required|string'
         ]);
 
-        $shop = AgentShop::where('slug', $slug)
+        $shop = UserShop::where('slug', $slug)
             ->where('is_active', true)
             ->firstOrFail();
 
-        // Verify payment hasn't been used for an order already
+        // Verify payment hasn't been used for an order already (system-wide check)
         $existingOrder = Order::where('payment_reference', $request->payment_reference)->first();
         if ($existingOrder) {
-            return back()->withErrors(['payment_reference' => 'This payment has already been used for an order.']);
+            // Check if the existing order belongs to this shop
+            if ($existingOrder->agent_id == $shop->user_id) {
+                return back()->withErrors(['payment_reference' => 'This payment has already been used for an order in this shop.']);
+            } else {
+                return back()->withErrors(['payment_reference' => 'This payment reference has already been used for an order with another agent. Each payment can only be used once.']);
+            }
         }
 
         // Verify the payment with Paystack
@@ -145,7 +154,7 @@ class ShopController extends Controller
         }
 
         $paymentData = $paymentVerification['data'];
-        $agentProduct = \App\Models\AgentProduct::with(['product', 'productVariant', 'agentShop.agent'])
+        $agentProduct = \App\Models\AgentProduct::with(['product', 'productVariant', 'agentShop.user'])
             ->find($request->agent_product_id);
 
         // Verify the product belongs to this shop
@@ -153,10 +162,19 @@ class ShopController extends Controller
             return back()->withErrors(['agent_product_id' => 'Invalid product selection.']);
         }
 
-        // Verify the payment amount matches the product price
+        // Verify the payment amount is reasonable for the product price (allow for Paystack charges)
         $paymentAmount = $paymentData['amount'] / 100;
-        if (abs(floatval($agentProduct->agent_price) - $paymentAmount) >= 0.01) {
-            return back()->withErrors(['agent_product_id' => 'Product price does not match payment amount.']);
+        $productPrice = floatval($agentProduct->agent_price);
+        $priceDifference = $paymentAmount - $productPrice;
+        $maxAllowedDifference = min($productPrice * 0.05, 2.00); // 5% or GHS 2 max
+        
+        // Allow payment amount to be higher than product price (for Paystack charges)
+        // but not significantly lower
+        if ($priceDifference < -0.50 || $priceDifference > $maxAllowedDifference) {
+            return back()->withErrors([
+                'agent_product_id' => 'Payment amount (GHS ' . number_format($paymentAmount, 2) . 
+                    ') does not reasonably match product price (GHS ' . number_format($productPrice, 2) . ').'
+            ]);
         }
 
         try {
@@ -172,7 +190,8 @@ class ShopController extends Controller
                 'buyer_email' => $paymentData['customer']['email'],
                 'beneficiary_number' => $request->beneficiary_number,
                 'network' => $agentProduct->product->network,
-                'is_guest_order' => true
+                'is_guest_order' => true,
+                'order_source' => 'shop'
             ]);
 
             // Attach the product to the order
@@ -185,7 +204,7 @@ class ShopController extends Controller
 
             // Create commission for agent
             if ($agentProduct->commission_amount > 0) {
-                $agentProduct->agentShop->agent->commissions()->create([
+                $agentProduct->agentShop->user->commissions()->create([
                     'order_id' => $order->id,
                     'product_id' => $agentProduct->product_id,
                     'product_variant_id' => $agentProduct->product_variant_id,
@@ -203,24 +222,20 @@ class ShopController extends Controller
                 'shop_slug' => $slug
             ]);
 
+            // Push order to external APIs based on network and individual service settings
+            $this->pushOrderToExternalApis($order);
+
             return redirect()->route('shop.order-success', [
                 'slug' => $slug,
                 'order' => $order->id
             ])->with('success', 'Order created successfully from your existing payment!');
             
         } catch (\Exception $e) {
-            \Log::error('Failed to create order from payment', [
-                'error' => $e->getMessage(),
-                'payment_reference' => $request->payment_reference,
-                'shop_slug' => $slug,
-                'trace' => $e->getTraceAsString()
-            ]);
-            
             return back()->withErrors(['error' => 'Failed to create order. Please try again or contact support.']);
         }
     }
 
-    private function handleMissingOrder(Request $request, $shop)
+    private function handleMissingOrderWithFlexiblePricing(Request $request, $shop)
     {
         // Verify the payment with Paystack to check if it exists and get amount
         $paymentVerification = $this->verifyPaystackPayment($request->payment_reference);
@@ -230,57 +245,42 @@ class ShopController extends Controller
         }
 
         $paymentData = $paymentVerification['data'];
-        $paymentAmount = $paymentData['amount'] / 100; // Convert from kobo to naira
+        $paymentAmount = $paymentData['amount'] / 100; // Convert from kobo to cedis
         
-        \Log::info('Looking for products matching payment amount', [
-            'payment_amount' => $paymentAmount,
-            'shop_id' => $shop->id
-        ]);
-        
-        // Get products from this shop that match the payment amount
+        // Get all products from this shop
         $allProducts = $this->agentService->getShopProducts($shop);
-        \Log::info('All shop products', ['products' => $allProducts->toArray()]);
         
-        $matchingProducts = $allProducts->filter(function($product) use ($paymentAmount) {
+        // Find products with flexible pricing to account for Paystack charges
+        // 1. Exact match (within 0.01 difference)
+        $exactMatches = $allProducts->filter(function($product) use ($paymentAmount) {
             $productPrice = floatval($product['agent_price']);
-            $priceDifference = abs($productPrice - $paymentAmount);
-            \Log::info('Price comparison', [
-                'product_id' => $product['id'],
-                'product_name' => $product['product']['name'],
-                'product_price' => $productPrice,
-                'payment_amount' => $paymentAmount,
-                'difference' => $priceDifference,
-                'matches' => $priceDifference < 0.01
-            ]);
-            return $priceDifference < 0.01;
+            return abs($productPrice - $paymentAmount) < 0.01;
+        });
+        
+        // 2. Products with price below payment amount (accounting for Paystack charges)
+        // Allow up to 5% difference or GHS 2, whichever is smaller
+        $flexibleMatches = $allProducts->filter(function($product) use ($paymentAmount) {
+            $productPrice = floatval($product['agent_price']);
+            $maxDifference = min($paymentAmount * 0.05, 2.00); // 5% or GHS 2 max
+            return $productPrice <= $paymentAmount && ($paymentAmount - $productPrice) <= $maxDifference;
+        });
+        
+        // Combine and remove duplicates
+        $matchingProducts = $exactMatches->merge($flexibleMatches)->unique('id');
+        
+        // Sort by price difference (closest to payment amount first)
+        $matchingProducts = $matchingProducts->sortBy(function($product) use ($paymentAmount) {
+            return abs(floatval($product['agent_price']) - $paymentAmount);
         });
 
-        \Log::info('Matching products found', ['count' => $matchingProducts->count()]);
-
         if ($matchingProducts->isEmpty()) {
-            return back()->withErrors([
-                'payment_reference' => 'Payment found (GHS ' . number_format($paymentAmount, 2) . ') but no products match this amount in this shop.'
-            ]);
-        }
-
-        // Show product selection page
-        return inertia('Shop/CreateOrderFromPayment', [
-            'shop' => [
-                'name' => $shop->name,
-                'slug' => $shop->slug,
-                'primary_color' => $shop->primary_color,
-                'background_color' => $shop->background_color
-            ],
-            'agent' => [
-                'name' => $shop->agent->name
-            ],
-            'payment' => [
-                'reference' => $request->payment_reference,
-                'amount' => $paymentAmount,
-                'email' => $paymentData['customer']['email'],
-                'beneficiary_number' => $request->beneficiary_number
-            ],
-            'products' => $matchingProducts->map(function($product) {
+            // Show only products with prices below or equal to payment amount
+            $affordableProducts = $allProducts->filter(function($product) use ($paymentAmount) {
+                $productPrice = floatval($product['agent_price']);
+                return $productPrice <= $paymentAmount;
+            });
+            
+            $allProductsForDisplay = $affordableProducts->map(function($product) {
                 return [
                     'id' => $product['id'],
                     'name' => $product['product']['name'],
@@ -289,8 +289,66 @@ class ShopController extends Controller
                     'agent_price' => $product['agent_price'],
                     'size' => $this->getProductSize($product['variant'])
                 ];
+            })->values();
+            
+            return inertia('Shop/CreateOrderFromPayment', [
+                'shop' => [
+                    'name' => $shop->name,
+                    'slug' => $shop->slug,
+                    'primary_color' => $shop->primary_color,
+                    'background_color' => $shop->background_color
+                ],
+                'agent' => [
+                    'name' => $shop->user->name
+                ],
+                'payment' => [
+                    'reference' => $request->payment_reference,
+                    'amount' => $paymentAmount,
+                    'email' => $paymentData['customer']['email'],
+                    'beneficiary_number' => $request->beneficiary_number
+                ],
+                'products' => $allProductsForDisplay,
+                'message' => 'Payment found (GHS ' . number_format($paymentAmount, 2) . ') but no close price matches. Please select a product below:'
+            ]);
+        }
+
+        // Show matching products
+        return inertia('Shop/CreateOrderFromPayment', [
+            'shop' => [
+                'name' => $shop->name,
+                'slug' => $shop->slug,
+                'primary_color' => $shop->primary_color,
+                'background_color' => $shop->background_color
+            ],
+            'agent' => [
+                'name' => $shop->user->name
+            ],
+            'payment' => [
+                'reference' => $request->payment_reference,
+                'amount' => $paymentAmount,
+                'email' => $paymentData['customer']['email'],
+                'beneficiary_number' => $request->beneficiary_number
+            ],
+            'products' => $matchingProducts->map(function($product) use ($paymentAmount) {
+                $productPrice = floatval($product['agent_price']);
+                $difference = $paymentAmount - $productPrice;
+                return [
+                    'id' => $product['id'],
+                    'name' => $product['product']['name'],
+                    'network' => $product['product']['network'],
+                    'description' => $product['product']['description'] ?? '',
+                    'agent_price' => $product['agent_price'],
+                    'size' => $this->getProductSize($product['variant']),
+                    'price_difference' => $difference,
+                    'is_exact_match' => abs($difference) < 0.01
+                ];
             })->values()
         ]);
+    }
+    private function handleMissingOrder(Request $request, $shop)
+    {
+        // Use the new flexible pricing method
+        return $this->handleMissingOrderWithFlexiblePricing($request, $shop);
     }
 
     private function handleMissingOrderById(Request $request, $shop)
@@ -303,38 +361,30 @@ class ShopController extends Controller
         }
 
         $paymentData = $paymentVerification['data'];
-        $paymentAmount = $paymentData['amount'] / 100; // Convert from kobo to naira
+        $paymentAmount = $paymentData['amount'] / 100; // Convert from kobo to cedis
         
-        \Log::info('Looking for products matching payment amount (by ID)', [
-            'payment_amount' => $paymentAmount,
-            'shop_id' => $shop->id,
-            'reference' => $request->order_id
-        ]);
-        
-        // Get products from this shop that match the payment amount
+        // Get all products from this shop
         $allProducts = $this->agentService->getShopProducts($shop);
-        \Log::info('All shop products (by ID)', ['products' => $allProducts->toArray()]);
         
-        $matchingProducts = $allProducts->filter(function($product) use ($paymentAmount) {
+        // Find products with flexible pricing to account for Paystack charges
+        $flexibleMatches = $allProducts->filter(function($product) use ($paymentAmount) {
             $productPrice = floatval($product['agent_price']);
-            $priceDifference = abs($productPrice - $paymentAmount);
-            \Log::info('Price comparison (by ID)', [
-                'product_id' => $product['id'],
-                'product_name' => $product['product']['name'],
-                'product_price' => $productPrice,
-                'payment_amount' => $paymentAmount,
-                'difference' => $priceDifference,
-                'matches' => $priceDifference < 0.01
-            ]);
-            return $priceDifference < 0.01;
+            $maxDifference = min($paymentAmount * 0.05, 2.00); // 5% or GHS 2 max
+            return $productPrice <= $paymentAmount && ($paymentAmount - $productPrice) <= $maxDifference;
+        });
+        
+        // Sort by price difference (closest to payment amount first)
+        $matchingProducts = $flexibleMatches->sortBy(function($product) use ($paymentAmount) {
+            return abs(floatval($product['agent_price']) - $paymentAmount);
         });
 
-        \Log::info('Matching products found (by ID)', ['count' => $matchingProducts->count()]);
-
         if ($matchingProducts->isEmpty()) {
-            return back()->withErrors([
-                'order_id' => 'Payment found (GHS ' . number_format($paymentAmount, 2) . ') but no products match this amount in this shop.'
-            ]);
+            // Show only products with prices below or equal to payment amount
+            $affordableProducts = $allProducts->filter(function($product) use ($paymentAmount) {
+                $productPrice = floatval($product['agent_price']);
+                return $productPrice <= $paymentAmount;
+            });
+            $matchingProducts = $affordableProducts;
         }
 
         // Show product selection page
@@ -346,7 +396,7 @@ class ShopController extends Controller
                 'background_color' => $shop->background_color
             ],
             'agent' => [
-                'name' => $shop->agent->name
+                'name' => $shop->user->name
             ],
             'payment' => [
                 'reference' => $request->order_id,
@@ -354,14 +404,18 @@ class ShopController extends Controller
                 'email' => $paymentData['customer']['email'],
                 'beneficiary_number' => $request->email // Use the email from the form as beneficiary number context
             ],
-            'products' => $matchingProducts->map(function($product) {
+            'products' => $matchingProducts->map(function($product) use ($paymentAmount) {
+                $productPrice = floatval($product['agent_price']);
+                $difference = $paymentAmount - $productPrice;
                 return [
                     'id' => $product['id'],
                     'name' => $product['product']['name'],
                     'network' => $product['product']['network'],
                     'description' => $product['product']['description'] ?? '',
                     'agent_price' => $product['agent_price'],
-                    'size' => $this->getProductSize($product['variant'])
+                    'size' => $this->getProductSize($product['variant']),
+                    'price_difference' => $difference,
+                    'is_reasonable_match' => $productPrice <= $paymentAmount && $difference <= min($paymentAmount * 0.05, 2.00)
                 ];
             })->values()
         ]);
@@ -371,44 +425,78 @@ class ShopController extends Controller
     {
         $request->validate([
             'payment_reference' => 'required|string',
-            'beneficiary_number' => 'required|string'
+            'beneficiary_number' => 'required|string|size:10'
         ]);
 
-        $shop = AgentShop::where('slug', $slug)
+        $shop = UserShop::where('slug', $slug)
             ->where('is_active', true)
-            ->with('agent')
+            ->with('user')
             ->firstOrFail();
 
-        // Validate payment reference starts with "guest"
-        if (!str_starts_with(strtolower($request->payment_reference), 'guest')) {
-            return back()->withErrors(['payment_reference' => 'Invalid reference format. Only guest order references are allowed for tracking.']);
-        }
+        $paymentReference = trim($request->payment_reference);
+        $beneficiaryNumber = trim($request->beneficiary_number);
 
-        // Check if an order exists with this payment reference
-        $existingOrder = Order::where('payment_reference', $request->payment_reference)
-            ->where('is_guest_order', true)
-            ->where(function($query) use ($shop) {
-                $query->where('agent_id', $shop->user_id)
-                      ->orWhere('user_id', $shop->user_id);
-            })
-            ->with('products')
-            ->first();
-
-        if ($existingOrder) {
-            // Check if the beneficiary number matches
-            if ($existingOrder->beneficiary_number !== $request->beneficiary_number) {
-                return back()->withErrors(['beneficiary_number' => 'This payment reference has been used for an order with a different phone number.']);
-            }
-
-            // Order found - redirect to success page
-            return redirect()->route('shop.order-success', [
-                'slug' => $slug,
-                'order' => $existingOrder->id
+        // Check if payment reference starts with "guest"
+        if (!str_starts_with(strtolower($paymentReference), 'guest')) {
+            return back()->withErrors([
+                'payment_reference' => 'Invalid payment reference. Only guest orders can be tracked through this system.'
             ]);
         }
 
-        // Order doesn't exist, check if payment exists and show product selection
-        return $this->handleMissingOrder($request, $shop);
+        // First, check if an order exists with this payment reference anywhere in the system
+        $anyExistingOrder = Order::where('payment_reference', $paymentReference)->first();
+        
+        if ($anyExistingOrder) {
+            // Check if the order belongs to this shop
+            $shopOrder = Order::where('payment_reference', $paymentReference)
+                ->where('is_guest_order', true)
+                ->where(function($query) use ($shop) {
+                    $query->where('agent_id', $shop->user_id)
+                          ->orWhere('user_id', $shop->user_id);
+                })
+                ->with('products')
+                ->first();
+            
+            if ($shopOrder) {
+                // Order belongs to this shop - check beneficiary number
+                if ($shopOrder->beneficiary_number !== $beneficiaryNumber) {
+                    return back()->withErrors([
+                        'beneficiary_number' => 'This payment reference was used for an order with a different phone number.'
+                    ]);
+                }
+
+                // Order found and beneficiary matches - redirect to success page
+                return redirect()->route('shop.order-success', [
+                    'slug' => $slug,
+                    'order' => $shopOrder->id
+                ]);
+            } else {
+                // Order exists but belongs to a different shop/agent
+                return back()->withErrors([
+                    'payment_reference' => 'This payment reference has already been used for an order with another agent. Each payment can only be used once.'
+                ]);
+            }
+        }
+        
+        // Order doesn't exist, verify payment with Paystack
+        $paymentVerification = $this->verifyPaystackPayment($paymentReference);
+        
+        if (!$paymentVerification['status']) {
+            return back()->withErrors([
+                'payment_reference' => 'Payment reference not found or verification failed.'
+            ]);
+        }
+        
+        $paymentData = $paymentVerification['data'];
+        
+        if ($paymentData['status'] !== 'success') {
+            return back()->withErrors([
+                'payment_reference' => 'Payment was not successful.'
+            ]);
+        }
+        
+        // Payment exists and is successful, show product selection with flexible pricing
+        return $this->handleMissingOrderWithFlexiblePricing($request, $shop);
     }
 
     private function getProductSize($variant)
@@ -433,5 +521,46 @@ class ShopController extends Controller
         // If no specific size key, return the first attribute value
         $values = array_values($attributes);
         return !empty($values) ? $values[0] : null;
+    }
+
+    private function pushOrderToExternalApis(Order $order)
+    {
+        try {
+            // Get service settings
+            $jaybartEnabled = (bool) Setting::get('jaybart_order_pusher_enabled', 1);
+            $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);
+            $jescoEnabled = (bool) Setting::get('jesco_order_pusher_enabled', 1);
+            $easydataEnabled = (bool) Setting::get('easydata_order_pusher_enabled', 1);
+            
+            if (strtolower($order->network) === 'mtn') {
+                if ($jaybartEnabled) {
+                    $mtnOrderPusher = new OrderPusherService();
+                    $mtnOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to Jaybart API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                if ($jescoEnabled) {
+                    $jescoOrderPusher = new JescoOrderPusherService();
+                    $jescoOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to Jesco API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                if ($easydataEnabled) {
+                    $easydataOrderPusher = new EasyDataOrderPusherService();
+                    $easydataOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to EasyData API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled) {
+                    \Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+            } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at']) && $codecraftEnabled) {
+                $codeCraftOrderPusher = new CodeCraftOrderPusherService();
+                $codeCraftOrderPusher->pushOrderToApi($order);
+                \Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);
+            } else {
+                \Log::info('No enabled order pusher for network', ['orderId' => $order->id, 'network' => $order->network]);
+            }
+        } catch (\Exception $e) {
+            $order->update(['order_pusher_status' => 'failed']);
+            \Log::error('Failed to push order to external API', ['orderId' => $order->id, 'network' => $order->network, 'error' => $e->getMessage()]);
+        }
     }
 }

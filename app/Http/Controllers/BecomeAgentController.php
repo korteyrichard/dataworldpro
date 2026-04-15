@@ -43,7 +43,7 @@ class BecomeAgentController extends Controller
             'Content-Type' => 'application/json',
         ])->post('https://api.paystack.co/transaction/initialize', [
             'email' => $user->email,
-            'amount' => $totalAmount * 100, // Convert to kobo
+            'amount' => (int) round($totalAmount * 100), // Convert to kobo with proper rounding
             'callback_url' => route('agent.callback'),
             'reference' => $reference,
             'metadata' => [

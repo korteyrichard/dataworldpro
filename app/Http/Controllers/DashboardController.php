@@ -20,17 +20,16 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         
-        // Remove products query as we're not using the old product system anymore
-        
         $cartCount = 0;
         $cartItems = [];
         $walletBalance = 0;
-        $orders = [];
         
         if (auth()->check()) {
+            // Optimize cart loading - limit to 50 items and only load necessary relationships
             $cartCount = Cart::where('user_id', auth()->id())->count();
             $cartItems = Cart::where('user_id', auth()->id())
-                ->with(['product', 'productVariant'])
+                ->with(['product:id,name,network,expiry', 'productVariant:id,price,variant_attributes'])
+                ->limit(50) // Limit cart items to prevent performance issues
                 ->get()
                 ->map(function($item) {
                     $size = 'Unknown';
@@ -52,27 +51,32 @@ class DashboardController extends Controller
                     ];
                 });
             $walletBalance = $user->wallet_balance;
-            $orders = Order::where('user_id', $user->id)->with('products')->get();
         }
         
-        // Calculate dashboard stats
-        $totalSales = Transaction::where('user_id', $user->id)
+        $userId = $user->id;
+        
+        // Simple count queries for better performance
+        $totalSales = Transaction::where('user_id', $userId)
             ->where('status', 'completed')
             ->where('type', 'order')
             ->sum('amount');
             
-        $todaySales = Transaction::where('user_id', $user->id)
+        $todaySales = Transaction::where('user_id', $userId)
             ->where('status', 'completed')
             ->where('type', 'order')
             ->whereDate('created_at', today())
             ->sum('amount');
             
-        $pendingOrdersCount = Order::where('user_id', $user->id)
+        $pendingOrdersCount = Order::where('user_id', $userId)
             ->whereIn('status', ['pending', 'PENDING'])
             ->count();
             
-        $processingOrdersCount = Order::where('user_id', $user->id)
+        $processingOrdersCount = Order::where('user_id', $userId)
             ->whereIn('status', ['processing', 'PROCESSING'])
+            ->count();
+            
+        $completedOrdersCount = Order::where('user_id', $userId)
+            ->whereIn('status', ['completed', 'COMPLETED'])
             ->count();
         
         $activeAlert = \App\Models\Alert::where('is_active', true)->latest()->first();
@@ -81,12 +85,14 @@ class DashboardController extends Controller
             'cartCount' => $cartCount,
             'cartItems' => $cartItems,
             'walletBalance' => $walletBalance,
-            'orders' => $orders,
-            'totalSales' => $totalSales ?? 0,
-            'todaySales' => $todaySales ?? 0,
-            'pendingOrders' => $pendingOrdersCount ?? 0,
-            'processingOrders' => $processingOrdersCount ?? 0,
+            'totalSales' => (float) $totalSales,
+            'todaySales' => (float) $todaySales,
+            'pendingOrders' => $pendingOrdersCount,
+            'processingOrders' => $processingOrdersCount,
+            'completedOrders' => $completedOrdersCount,
             'activeAlert' => $activeAlert,
+            'userRole' => $user->role,
+            'hasShop' => $user->shop ? true : false,
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
@@ -175,7 +181,7 @@ class DashboardController extends Controller
             'Content-Type' => 'application/json',
         ])->post('https://api.paystack.co/transaction/initialize', [
             'email' => $user->email,
-            'amount' => $totalAmount * 100, // Convert to kobo
+            'amount' => (int) round($totalAmount * 100), // Convert to kobo with proper rounding
             'callback_url' => route('wallet.callback'),
             'reference' => $reference,
             'metadata' => [

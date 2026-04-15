@@ -73,7 +73,8 @@ class OrderController extends Controller
                 'total' => $variant->price,
                 'beneficiary_number' => $request->beneficiary_number,
                 'network' => $product->network,
-                'status' => 'pending'
+                'status' => 'pending',
+                'order_source' => 'api'
             ]);
 
             $order->products()->attach($product->id, [

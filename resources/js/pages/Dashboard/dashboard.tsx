@@ -49,11 +49,11 @@ interface DashboardProps extends PageProps {
   cartCount: number;
   cartItems: CartItem[];
   walletBalance: number;
-  orders: Order[];
   totalSales: number;
   todaySales: number;
   pendingOrders: number;
   processingOrders: number;
+  completedOrders: number;
   products: Product[];
   activeAlert: Alert | null;
   flash?: {
@@ -64,7 +64,7 @@ interface DashboardProps extends PageProps {
 }
 
 export default function Dashboard({ auth }: DashboardProps) {
-  const { cartCount, cartItems, walletBalance: initialWalletBalance, orders, totalSales, todaySales, pendingOrders, processingOrders, products, activeAlert, flash } = usePage<DashboardProps>().props;
+  const { cartCount, cartItems, walletBalance: initialWalletBalance, totalSales, todaySales, pendingOrders, processingOrders, completedOrders, products, activeAlert, flash } = usePage<DashboardProps>().props;
   const { toast } = useToast();
 
   const [walletBalance, setWalletBalance] = useState(initialWalletBalance ?? 0);
@@ -465,6 +465,7 @@ export default function Dashboard({ auth }: DashboardProps) {
           {/* Welcome Message */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Welcome, {auth.user.name}!</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Contact admin for API access</p>
           </div>
 
           {/* Upgrade Prompt for Referred Users */}
@@ -489,17 +490,7 @@ export default function Dashboard({ auth }: DashboardProps) {
               </div>
             </div>
           )}
-          {/* Action Buttons Section */}
-          {auth.user.role === 'customer' && (
-          <div className='w-full mb-10'>
-                   <Link
-                      href={route('become_an_agent')}
-                      className="px-6 py-2 text-white font-medium rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 hover:text-white hover:-translate-y-0.5 transition-all duration-300"
-                    >
-                      Get API Access
-                    </Link>
-              </div>)
-           }
+
 
           {/* Stats Cards Section */}
           <div className="mb-8 sm:mb-10">
@@ -722,7 +713,13 @@ export default function Dashboard({ auth }: DashboardProps) {
                         const cleaned = e.target.value.replace(/\s/g, '').replace(/\D/g, '').slice(0, 10);
                         setPhoneNumber(cleaned);
                       }}
+                      maxLength={10}
+                      minLength={10}
+                      pattern="[0-9]{10}"
                     />
+                    {phoneNumber && phoneNumber.length !== 10 && (
+                      <p className="text-red-500 text-xs mt-1">Phone number must be exactly 10 digits</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Bundle Size (GB)</label>
@@ -746,7 +743,7 @@ export default function Dashboard({ auth }: DashboardProps) {
                   </div>
                   <Button 
                     onClick={handleAddSingle}
-                    disabled={!phoneNumber || !bundleSize || isProcessing}
+                    disabled={!phoneNumber || phoneNumber.length !== 10 || !bundleSize || isProcessing}
                     className={`w-full ${getNetworkButtonColors(selectedNetwork)} text-white`}
                   >
                     Add to Cart

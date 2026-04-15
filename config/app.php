@@ -146,4 +146,16 @@ return [
 
     'minimum_order_tracking_date' => env('MINIMUM_ORDER_TRACKING_DATE', '2026-01-01'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Domain Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for main and second domains used in the application.
+    |
+    */
+
+    'main_domain' => env('MAIN_DOMAIN', 'prodataworld.com'),
+    'second_domain' => env('SECOND_DOMAIN'),
+
 ];

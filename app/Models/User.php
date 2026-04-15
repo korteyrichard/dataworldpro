@@ -69,10 +69,16 @@ class User extends Authenticatable
         return $this->hasMany(AFAOrders::class);
     }
 
-    // Agent relationships
+    // Shop relationship (available to all roles)
+    public function shop()
+    {
+        return $this->hasOne(UserShop::class);
+    }
+
+    // Keep agentShop for backward compatibility
     public function agentShop()
     {
-        return $this->hasOne(AgentShop::class);
+        return $this->shop();
     }
 
     public function commissions()

@@ -5,7 +5,15 @@ import { Badge } from '@/components/ui/badge';
 
 interface Commission {
     id: number;
-    agent: { name: string; email: string };
+    agent: { 
+        name: string; 
+        email: string;
+        shop?: {
+            name: string;
+            slug: string;
+            is_active: boolean;
+        };
+    };
     order_id: number;
     product: { name: string };
     commission_amount: number;
@@ -46,25 +54,25 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
     const commissionsData = commissions?.data || [];
 
     return (
-        <AdminLayout user={auth.user} header="Commission Management">
+        <AdminLayout user={auth.user} header="Store Management">
             <div className="space-y-6">
                 {/* Statistics Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">Total Commissions</CardTitle>
+                            <CardTitle className="text-sm font-medium text-gray-600">Total Shop Commissions</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-blue-600">
                                 ₵{Number(stats?.total_commissions || 0).toFixed(2)}
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">All time earnings</p>
+                            <p className="text-xs text-gray-500 mt-1">All time shop earnings</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">Available Commissions</CardTitle>
+                            <CardTitle className="text-sm font-medium text-gray-600">Available Shop Commissions</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-green-600">
@@ -76,7 +84,7 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
 
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">Withdrawn Commissions</CardTitle>
+                            <CardTitle className="text-sm font-medium text-gray-600">Withdrawn Shop Commissions</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-gray-600">
@@ -114,9 +122,9 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
                 {/* Commissions Table */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>All Commissions</CardTitle>
+                        <CardTitle>All Shop Commissions</CardTitle>
                         <p className="text-sm text-gray-600">
-                            Showing {commissionsData.length} of {commissions?.total || 0} commissions
+                            Showing {commissionsData.length} of {commissions?.total || 0} shop commissions
                         </p>
                     </CardHeader>
                     <CardContent>
@@ -124,7 +132,8 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b">
-                                        <th className="text-left p-2">Agent</th>
+                                        <th className="text-left p-2">Shop Owner</th>
+                                        <th className="text-left p-2">Shop Name</th>
                                         <th className="text-left p-2">Order ID</th>
                                         <th className="text-left p-2">Product</th>
                                         <th className="text-left p-2">Quantity</th>
@@ -143,6 +152,19 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
                                                         <div className="text-sm text-gray-500">{commission.agent?.email || 'N/A'}</div>
                                                     </div>
                                                 </td>
+                                                <td className="p-2">
+                                                    {commission.agent?.shop ? (
+                                                        <div>
+                                                            <div className="font-medium">{commission.agent.shop.name}</div>
+                                                            <div className="text-sm text-gray-500">/{commission.agent.shop.slug}</div>
+                                                            <Badge className={commission.agent.shop.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                                                {commission.agent.shop.is_active ? 'Active' : 'Inactive'}
+                                                            </Badge>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400">No Shop</span>
+                                                    )}
+                                                </td>
                                                 <td className="p-2">#{commission.order_id}</td>
                                                 <td className="p-2">{commission.product?.name || 'N/A'}</td>
                                                 <td className="p-2">{commission.quantity}</td>
@@ -157,8 +179,8 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={7} className="p-4 text-center text-gray-500">
-                                                No commissions found
+                                            <td colSpan={8} className="p-4 text-center text-gray-500">
+                                                No shop commissions found
                                             </td>
                                         </tr>
                                     )}

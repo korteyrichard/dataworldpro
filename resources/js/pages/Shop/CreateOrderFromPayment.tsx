@@ -55,7 +55,7 @@ export default function CreateOrderFromPayment({ shop, agent, payment, products 
         e.preventDefault();
         if (!selectedProduct) return;
         
-        post(route('shop.create-order-from-payment', shop.slug));
+        post(`/shop/${shop.slug}/create-order-from-payment`);
     };
 
     return (
@@ -233,15 +233,7 @@ export default function CreateOrderFromPayment({ shop, agent, payment, products 
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="bg-white border-t mt-16">
-                    <div className="container mx-auto px-4 py-6">
-                        <div className="text-center text-gray-600">
-                            <p>Order creation for <span className="font-semibold">{shop.name}</span></p>
-                            <p className="text-sm mt-1">Powered by <span className="font-semibold text-blue-600">ProDataWorld</span></p>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </>
     );

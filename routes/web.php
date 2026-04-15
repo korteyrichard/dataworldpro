@@ -64,8 +64,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Bundle sizes API
     Route::get('/api/bundle-sizes', [DashboardController::class, 'getBundleSizes'])->name('api.bundle-sizes');
 
-    // Agent routes
-    Route::middleware('role:agent')->prefix('agent')->name('agent.')->group(function () {
+    // Business features - accessible to all authenticated users
+    Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->group(function () {
         Route::get('/dashboard', [AgentController::class, 'dashboard'])->name('dashboard');
         Route::get('/commissions', [AgentController::class, 'commissions'])->name('commissions');
         Route::get('/referrals', [AgentController::class, 'referrals'])->name('referrals');
@@ -148,6 +148,25 @@ Route::get('/payment/failed', function () { return 'Payment Failed!'; })->name('
 Route::get('/test-alert', function () {
     return view('test-alert');
 })->name('test.alert');
+
+// Test route for domain restriction - REMOVE AFTER TESTING
+Route::get('/domain-test', function () {
+    return response()->json([
+        'message' => 'If you see this on alldatagh.com, the restriction is NOT working',
+        'host' => request()->getHost(),
+        'should_be_blocked' => request()->getHost() === 'alldatagh.com'
+    ]);
+});
+
+// Test route for domain restriction
+Route::get('/test-domain', function () {
+    return response()->json([
+        'message' => 'Domain restriction test',
+        'host' => request()->getHost(),
+        'url' => request()->url(),
+        'second_domain' => config('app.second_domain')
+    ]);
+});
 
 // Public shop routes
 Route::get('/shop/{slug}', [ShopController::class, 'show'])->name('shop.show');

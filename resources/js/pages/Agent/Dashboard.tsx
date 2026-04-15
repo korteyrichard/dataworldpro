@@ -69,16 +69,6 @@ export default function AgentDashboard({ auth, stats, shop, referralCode, referr
                             <div className="text-2xl font-bold">₵{formatCurrency(stats.available_balance)}</div>
                         </CardContent>
                     </Card>
-                    
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Referral Earnings</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">₵{formatCurrency(stats.referral_earnings)}</div>
-                        </CardContent>
-                    </Card>
                 </div>
 
                 {/* Shop Status */}
@@ -150,59 +140,6 @@ export default function AgentDashboard({ auth, stats, shop, referralCode, referr
                                 </Dialog>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
-
-                {/* Referral Section */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Users className="h-5 w-5" />
-                            My Referral Link
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="referral-code">Referral Code</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="referral-code"
-                                        value={referralCode}
-                                        readOnly
-                                        className="font-mono"
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => navigator.clipboard.writeText(referralCode)}
-                                    >
-                                        Copy
-                                    </Button>
-                                </div>
-                            </div>
-                            <div>
-                                <Label htmlFor="referral-url">Referral URL</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="referral-url"
-                                        value={referralUrl}
-                                        readOnly
-                                        className="font-mono text-sm"
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => navigator.clipboard.writeText(referralUrl)}
-                                    >
-                                        Copy
-                                    </Button>
-                                </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                                Share this link with others to earn referral commissions when they upgrade to agent status.
-                            </p>
-                        </div>
                     </CardContent>
                 </Card>
             </div>

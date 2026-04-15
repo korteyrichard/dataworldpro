@@ -181,11 +181,20 @@ export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFAReg
                   type="text"
                   name="ghana_card"
                   value={data.ghana_card}
-                  onChange={handleInputChange}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setData('ghana_card', value);
+                  }}
                   required
+                  maxLength={10}
+                  minLength={10}
+                  pattern="[0-9]{10}"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                  placeholder="GHA-XXXXXXXXX-X"
+                  placeholder="Enter 10 digits"
                 />
+                {data.ghana_card && data.ghana_card.length !== 10 && (
+                  <p className="text-red-500 text-xs mt-1">Ghana Card Number must be exactly 10 digits</p>
+                )}
               </div>
 
               <div>
@@ -258,7 +267,7 @@ export default function AfaRegistration({ auth, afaProducts, afaOrders }: AFAReg
               </div>
               <button
                 type="submit"
-                disabled={processing || !selectedProduct || auth.user.wallet_balance < (selectedProduct?.price || 0)}
+                disabled={processing || !selectedProduct || auth.user.wallet_balance < (selectedProduct?.price || 0) || data.ghana_card.length !== 10}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-6 rounded-md transition duration-200"
               >
                 {processing ? 'Submitting...' : `Register for AFA ${selectedProduct ? `(GHS ${selectedProduct.price})` : ''}`}

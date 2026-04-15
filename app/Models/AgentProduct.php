@@ -22,7 +22,12 @@ class AgentProduct extends Model
 
     public function agentShop(): BelongsTo
     {
-        return $this->belongsTo(AgentShop::class);
+        return $this->belongsTo(UserShop::class, 'agent_shop_id');
+    }
+
+    public function userShop(): BelongsTo
+    {
+        return $this->belongsTo(UserShop::class, 'agent_shop_id');
     }
 
     public function product(): BelongsTo

@@ -50,9 +50,6 @@ class OrdersController extends Controller
         
         // Transform orders to include variant information
         $orders->getCollection()->transform(function($order) use ($user) {
-            // Add order source information for display
-            $order->order_source = $order->is_guest_order ? 'shop' : 'dashboard';
-            
             $order->products = $order->products->map(function($product) {
                 if ($product->pivot->product_variant_id) {
                     $variant = \App\Models\ProductVariant::find($product->pivot->product_variant_id);
@@ -121,6 +118,7 @@ class OrdersController extends Controller
                     'total' => $itemTotal,
                     'beneficiary_number' => $item->beneficiary_number,
                     'network' => $network,
+                    'order_source' => 'dashboard'
                 ]);
                 Log::info('Order created for cart item.', ['orderId' => $order->id, 'network' => $network, 'total' => $itemTotal, 'beneficiaryNumber' => $item->beneficiary_number]);
 
@@ -181,7 +179,7 @@ class OrdersController extends Controller
                         if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled) {
                             Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
                         }
-                    } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && $codecraftEnabled) {
+                    } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at']) && $codecraftEnabled) {
                         $codeCraftOrderPusher = new CodeCraftOrderPusherService();
                         $codeCraftOrderPusher->pushOrderToApi($order);
                         Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);

@@ -9,8 +9,19 @@ import { useToast } from '@/components/ui/use-toast';
 
 interface Withdrawal {
     id: number;
-    agent: { name: string; email: string };
+    agent: { 
+        name: string; 
+        email: string;
+        shop?: {
+            name: string;
+            slug: string;
+            is_active: boolean;
+        };
+    };
     amount: number;
+    phone_number?: string;
+    network?: string;
+    mobile_money_name?: string;
     withdrawal_fee: number;
     net_amount: number;
     status: string;
@@ -69,12 +80,12 @@ export default function AdminWithdrawals({ auth, withdrawals }: AdminWithdrawals
     const withdrawalsData = withdrawals?.data || [];
 
     return (
-        <AdminLayout user={auth.user} header="Withdrawal Management">
+        <AdminLayout user={auth.user} header="Shop Withdrawal Management">
             <Card>
                 <CardHeader>
-                    <CardTitle>Withdrawal Requests</CardTitle>
+                    <CardTitle>Shop Withdrawal Requests</CardTitle>
                     <p className="text-sm text-gray-600">
-                        Showing {withdrawalsData.length} of {withdrawals?.total || 0} withdrawals
+                        Showing {withdrawalsData.length} of {withdrawals?.total || 0} shop withdrawals
                     </p>
                 </CardHeader>
                 <CardContent>
@@ -82,12 +93,12 @@ export default function AdminWithdrawals({ auth, withdrawals }: AdminWithdrawals
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b">
-                                    <th className="text-left p-2">Agent</th>
+                                    <th className="text-left p-2">Shop Owner</th>
+                                    <th className="text-left p-2">Shop Name</th>
                                     <th className="text-left p-2">Amount</th>
-                                    <th className="text-left p-2">Fee</th>
+                                    <th className="text-left p-2">Mobile Money</th>
                                     <th className="text-left p-2">Net Amount</th>
                                     <th className="text-left p-2">Status</th>
-                                    <th className="text-left p-2">Notes</th>
                                     <th className="text-left p-2">Date</th>
                                     <th className="text-left p-2">Actions</th>
                                 </tr>
@@ -102,15 +113,39 @@ export default function AdminWithdrawals({ auth, withdrawals }: AdminWithdrawals
                                                     <div className="text-sm text-gray-500">{withdrawal.agent?.email || 'N/A'}</div>
                                                 </div>
                                             </td>
+                                            <td className="p-2">
+                                                {withdrawal.agent?.shop ? (
+                                                    <div>
+                                                        <div className="font-medium">{withdrawal.agent.shop.name}</div>
+                                                        <div className="text-sm text-gray-500">/{withdrawal.agent.shop.slug}</div>
+                                                        <Badge className={withdrawal.agent.shop.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                                            {withdrawal.agent.shop.is_active ? 'Active' : 'Inactive'}
+                                                        </Badge>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400">No Shop</span>
+                                                )}
+                                            </td>
                                             <td className="p-2">₵{Number(withdrawal.amount || 0).toFixed(2)}</td>
-                                            <td className="p-2 text-red-600">₵{Number(withdrawal.withdrawal_fee || 0).toFixed(2)}</td>
+                                            <td className="p-2">
+                                                {withdrawal.network && withdrawal.phone_number ? (
+                                                    <div className="text-sm">
+                                                        <div className="font-medium">{withdrawal.network}</div>
+                                                        <div className="text-gray-600">{withdrawal.phone_number}</div>
+                                                        {withdrawal.mobile_money_name && (
+                                                            <div className="text-gray-500 text-xs">{withdrawal.mobile_money_name}</div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400">-</span>
+                                                )}
+                                            </td>
                                             <td className="p-2 font-medium">₵{Number(withdrawal.net_amount || withdrawal.amount || 0).toFixed(2)}</td>
                                             <td className="p-2">
                                                 <Badge className={getStatusColor(withdrawal.status)}>
                                                     {withdrawal.status}
                                                 </Badge>
                                             </td>
-                                            <td className="p-2">{withdrawal.notes || '-'}</td>
                                             <td className="p-2">{new Date(withdrawal.created_at).toLocaleDateString()}</td>
                                             <td className="p-2">
                                                 {withdrawal.status === 'pending' && (
@@ -137,7 +172,7 @@ export default function AdminWithdrawals({ auth, withdrawals }: AdminWithdrawals
                                 ) : (
                                     <tr>
                                         <td colSpan={8} className="p-4 text-center text-gray-500">
-                                            No withdrawal requests found
+                                            No shop withdrawal requests found
                                         </td>
                                     </tr>
                                 )}

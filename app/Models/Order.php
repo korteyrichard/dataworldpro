@@ -20,7 +20,8 @@ class Order extends Model
         'payment_method',
         'buyer_email',
         'is_guest_order',
-        'order_pusher_status'
+        'order_pusher_status',
+        'order_source'
     ];
     
     protected $casts = [
@@ -38,6 +39,9 @@ class Order extends Model
             $model->status = 'pending';
             if (is_null($model->order_pusher_status)) {
                 $model->order_pusher_status = 'disabled';
+            }
+            if (is_null($model->order_source)) {
+                $model->order_source = 'dashboard';
             }
         });
         

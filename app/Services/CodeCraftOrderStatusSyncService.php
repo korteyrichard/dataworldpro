@@ -9,7 +9,7 @@ use App\Services\MoolreSmsService;
 
 class CodeCraftOrderStatusSyncService
 {
-    private $apiKey = '250905051915-|9zeDO-YdLmuU-rCa?vb-TqFnqX-TcWFy3';
+    private $apiKey = '';
     private $baseUrl = 'https://api.codecraftnetwork.com/api';
 
     public function syncOrderStatus(Order $order)

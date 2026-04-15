@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Head, usePage, router } from '@inertiajs/react';
 import Pagination from '../../components/Pagination';
@@ -23,7 +23,7 @@ interface Order {
   network?: string;
   beneficiary_number?: string;
   payment_reference?: string;
-  order_source?: 'shop' | 'dashboard';
+  order_source?: 'shop' | 'dashboard' | 'api';
   commissions?: Array<{
     id: number;
     base_price: number;
@@ -88,7 +88,16 @@ export default function OrdersPage() {
     });
   };
 
+  // Use refs to track if this is the initial load
+  const isInitialLoad = React.useRef(true);
+
   useEffect(() => {
+    // Skip the first render to avoid making a request on page load
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       handleFilterChange();
     }, 300);
@@ -174,6 +183,7 @@ export default function OrdersPage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Network</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                     <th className="px-4 py-3"></th>
                   </tr>
@@ -191,6 +201,28 @@ export default function OrdersPage() {
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${order.status === 'completed' ? 'bg-green-100 text-green-700' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-700'}`}>{order.status}</span>
                         </td>
+                        <td className="px-4 py-3">
+                          {order.order_source === 'shop' && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
+                              Shop Order
+                            </span>
+                          )}
+                          {order.order_source === 'api' && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                              API Order
+                            </span>
+                          )}
+                          {order.order_source === 'dashboard' && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                              Dashboard
+                            </span>
+                          )}
+                          {!order.order_source && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">
+                              Dashboard
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">GHS {order.total}</td>
                         <td className="px-4 py-3 text-right">
                           <button className="text-blue-600 hover:underline focus:outline-none" aria-label="Expand order details">
@@ -199,7 +231,7 @@ export default function OrdersPage() {
                         </td>
                       </tr>
                       <tr>
-                        <td colSpan={6} className={`transition-all duration-300 ease-in-out overflow-hidden p-0 ${expandedOrder === order.id ? 'h-auto' : 'h-0'}`}
+                        <td colSpan={7} className={`transition-all duration-300 ease-in-out overflow-hidden p-0 ${expandedOrder === order.id ? 'h-auto' : 'h-0'}`}
                           style={{ display: expandedOrder === order.id ? 'table-cell' : 'none' }}>
                           <div className="flex flex-col gap-2 px-4 py-4">
                             <div className="font-semibold">Order Details</div>

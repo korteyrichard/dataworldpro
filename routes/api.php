@@ -71,6 +71,110 @@ Route::prefix('v1')->group(function () {
         Route::get('/transactions', [TransactionController::class, 'index']);
         Route::get('/transactions/{id}', [TransactionController::class, 'show']);
         
+        // ORDER TRACKING
+        Route::post('/track-order', function (Request $request) {
+            $request->validate([
+                'payment_reference' => 'required|string',
+                'beneficiary_number' => 'required|string|size:10',
+                'shop_slug' => 'nullable|string'
+            ]);
+            
+            $paymentReference = trim($request->payment_reference);
+            $beneficiaryNumber = trim($request->beneficiary_number);
+            $shopSlug = $request->shop_slug;
+            
+            // Build query for order search
+            $query = Order::where('payment_reference', $paymentReference)
+                ->where('is_guest_order', true);
+            
+            // If shop slug is provided, filter by that shop
+            if ($shopSlug) {
+                $shop = \App\Models\UserShop::where('slug', $shopSlug)
+                    ->where('is_active', true)
+                    ->first();
+                    
+                if (!$shop) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Shop not found'
+                    ], 404);
+                }
+                
+                $query->where(function($q) use ($shop) {
+                    $q->where('agent_id', $shop->user_id)
+                      ->orWhere('user_id', $shop->user_id);
+                });
+            }
+            
+            $existingOrder = $query->with(['products'])->first();
+            
+            if ($existingOrder) {
+                // Check if the beneficiary number matches
+                if ($existingOrder->beneficiary_number !== $beneficiaryNumber) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'This payment reference was used for an order with a different phone number.'
+                    ], 400);
+                }
+                
+                // Order found and beneficiary matches
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Order found',
+                    'order' => [
+                        'id' => $existingOrder->id,
+                        'payment_reference' => $existingOrder->payment_reference,
+                        'total' => $existingOrder->total,
+                        'status' => $existingOrder->status,
+                        'network' => $existingOrder->network,
+                        'beneficiary_number' => $existingOrder->beneficiary_number,
+                        'buyer_email' => $existingOrder->buyer_email,
+                        'created_at' => $existingOrder->created_at,
+                        'products' => $existingOrder->products->map(function($product) {
+                            return [
+                                'name' => $product->name,
+                                'network' => $product->network,
+                                'price' => $product->pivot->price
+                            ];
+                        })
+                    ]
+                ]);
+            }
+            
+            // Order not found, verify payment with Paystack
+            try {
+                $secretKey = config('services.paystack.secret_key');
+                
+                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $secretKey,
+                ])->get("https://api.paystack.co/transaction/verify/{$paymentReference}");
+                
+                if ($response->successful()) {
+                    $data = $response->json()['data'];
+                    
+                    if ($data['status'] === 'success') {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Payment verified but no order found. Please contact the agent to create your order.',
+                            'payment_verified' => true,
+                            'payment_amount' => $data['amount'] / 100
+                        ]);
+                    }
+                }
+                
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Payment reference not found or verification failed.'
+                ]);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Error verifying payment. Please try again.'
+                ], 500);
+            }
+        });
+        
         // Legacy endpoint
         Route::get('/transaction-status', [TransactionController::class, 'index']);
 

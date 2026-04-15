@@ -38,9 +38,13 @@ interface ShopProps {
     shop: Shop | null;
     products: Product[];
     availableProducts: AvailableProduct[];
+    domains: {
+        main: string;
+        second: string;
+    };
 }
 
-export default function Shop({ auth, shop, products, availableProducts }: ShopProps) {
+export default function Shop({ auth, shop, products, availableProducts, domains }: ShopProps) {
     const [shopName, setShopName] = useState('');
     const [primaryColor, setPrimaryColor] = useState('#3B82F6');
     const [backgroundColor, setBackgroundColor] = useState('#F1F5F9');
@@ -222,47 +226,73 @@ export default function Shop({ auth, shop, products, availableProducts }: ShopPr
                                     </form>
                                 ) : (
                                     <div className="space-y-4">
-                                        <p><strong>Shop Name:</strong> {shop.name}</p>
+                                        <p className="text-gray-900 dark:text-gray-100"><strong>Shop Name:</strong> {shop.name}</p>
                                         <div>
-                                            <p><strong>Shop URL:</strong></p>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <input 
-                                                    type="text" 
-                                                    value={`${window.location.origin}/shop/${shop.slug}`}
-                                                    readOnly
-                                                    className="flex-1 p-2 border rounded bg-gray-50"
-                                                />
-                                                <button 
-                                                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/shop/${shop.slug}`)}
-                                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                                >
-                                                    Copy
-                                                </button>
+                                            <p className="text-gray-900 dark:text-gray-100"><strong>Shop URLs:</strong></p>
+                                            <div className="space-y-3 mt-2">
+                                                {/* Main Domain URL */}
+                                                <div>
+                                                    <label className="text-sm text-gray-600 dark:text-gray-400">Main Domain:</label>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <input 
+                                                            type="text" 
+                                                            value={`${window.location.protocol}//${domains.main || window.location.host}/shop/${shop.slug}`}
+                                                            readOnly
+                                                            className="flex-1 p-2 border rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                                                        />
+                                                        <button 
+                                                            onClick={() => navigator.clipboard.writeText(`${window.location.protocol}//${domains.main || window.location.host}/shop/${shop.slug}`)}
+                                                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                        >
+                                                            Copy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {/* Second Domain URL */}
+                                                {domains.second && (
+                                                <div>
+                                                    <label className="text-sm text-gray-600 dark:text-gray-400">Store Domain:</label>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <input 
+                                                            type="text" 
+                                                            value={`${window.location.protocol}//${domains.second}/shop/${shop.slug}`}
+                                                            readOnly
+                                                            className="flex-1 p-2 border rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                                                        />
+                                                        <button 
+                                                            onClick={() => navigator.clipboard.writeText(`${window.location.protocol}//${domains.second}/shop/${shop.slug}`)}
+                                                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                                                        >
+                                                            Copy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <p><strong>Primary Color:</strong></p>
+                                                <p className="text-gray-900 dark:text-gray-100"><strong>Primary Color:</strong></p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <div 
                                                         className="w-8 h-8 rounded border"
                                                         style={{ backgroundColor: shop.primary_color }}
                                                     ></div>
-                                                    <span className="text-sm text-gray-600">{shop.primary_color}</span>
+                                                    <span className="text-sm text-gray-600 dark:text-gray-400">{shop.primary_color}</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <p><strong>Background Color:</strong></p>
+                                                <p className="text-gray-900 dark:text-gray-100"><strong>Background Color:</strong></p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <div 
                                                         className="w-8 h-8 rounded border"
                                                         style={{ backgroundColor: shop.background_color }}
                                                     ></div>
-                                                    <span className="text-sm text-gray-600">{shop.background_color}</span>
+                                                    <span className="text-sm text-gray-600 dark:text-gray-400">{shop.background_color}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <p><strong>Status:</strong> 
+                                        <p className="text-gray-900 dark:text-gray-100"><strong>Status:</strong> 
                                             <span className={shop.is_active ? 'text-green-600' : 'text-red-600'}>
                                                 {shop.is_active ? ' Active' : ' Inactive'}
                                             </span>
@@ -282,23 +312,23 @@ export default function Shop({ auth, shop, products, availableProducts }: ShopPr
                                     <div className="overflow-x-auto">
                                         <table className="w-full">
                                             <thead>
-                                                <tr className="border-b">
-                                                    <th className="text-left p-2">Product</th>
-                                                    <th className="text-left p-2">Variant</th>
-                                                    <th className="text-left p-2">Base Price</th>
-                                                    <th className="text-left p-2">Your Price</th>
-                                                    <th className="text-left p-2">Commission</th>
-                                                    <th className="text-left p-2">Actions</th>
+                                                <tr className="border-b border-gray-200 dark:border-gray-600">
+                                                    <th className="text-left p-2 text-gray-900 dark:text-gray-100">Product</th>
+                                                    <th className="text-left p-2 text-gray-900 dark:text-gray-100">Variant</th>
+                                                    <th className="text-left p-2 text-gray-900 dark:text-gray-100">Base Price</th>
+                                                    <th className="text-left p-2 text-gray-900 dark:text-gray-100">Your Price</th>
+                                                    <th className="text-left p-2 text-gray-900 dark:text-gray-100">Commission</th>
+                                                    <th className="text-left p-2 text-gray-900 dark:text-gray-100">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {products.map((product) => (
-                                                    <tr key={product.id} className="border-b">
-                                                        <td className="p-2">{product.product.name}</td>
-                                                        <td className="p-2">{product.variant.name}</td>
-                                                        <td className="p-2">₵{parseFloat(product.variant.price || 0).toFixed(2)}</td>
-                                                        <td className="p-2">₵{parseFloat(product.agent_price || 0).toFixed(2)}</td>
-                                                        <td className="p-2">₵{parseFloat(product.commission_amount || 0).toFixed(2)}</td>
+                                                    <tr key={product.id} className="border-b border-gray-200 dark:border-gray-600">
+                                                        <td className="p-2 text-gray-900 dark:text-gray-100">{product.product.name}</td>
+                                                        <td className="p-2 text-gray-900 dark:text-gray-100">{product.variant.name}</td>
+                                                        <td className="p-2 text-gray-900 dark:text-gray-100">₵{parseFloat(product.variant.price || 0).toFixed(2)}</td>
+                                                        <td className="p-2 text-gray-900 dark:text-gray-100">₵{parseFloat(product.agent_price || 0).toFixed(2)}</td>
+                                                        <td className="p-2 text-gray-900 dark:text-gray-100">₵{parseFloat(product.commission_amount || 0).toFixed(2)}</td>
                                                         <td className="p-2">
                                                             <Button
                                                                 variant="destructive"
@@ -318,7 +348,7 @@ export default function Shop({ auth, shop, products, availableProducts }: ShopPr
                                     </div>
                                 ) : (
                                     <div className="text-center py-8">
-                                        <p className="text-gray-500 mb-4">No products added to your shop yet.</p>
+                                        <p className="text-gray-500 dark:text-gray-400 mb-4">No products added to your shop yet.</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -335,11 +365,11 @@ export default function Shop({ auth, shop, products, availableProducts }: ShopPr
                                 <form onSubmit={handleAddProduct} className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium mb-2">Select Product Variant</label>
-                                        <div className="max-h-64 overflow-y-auto border rounded p-2">
+                                        <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                                             {availableProducts?.length > 0 ? (
                                                 availableProducts.map(product => 
                                                     product.variants.map(variant => (
-                                                        <div key={`${product.id}-${variant.id}`} className="flex items-center justify-between p-2 hover:bg-gray-50 border-b">
+                                                        <div key={`${product.id}-${variant.id}`} className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                                                             <div className="flex items-center space-x-3">
                                                                 <input
                                                                     type="radio"
@@ -353,27 +383,27 @@ export default function Shop({ auth, shop, products, availableProducts }: ShopPr
                                                                     className="w-4 h-4"
                                                                 />
                                                                 <div>
-                                                                    <p className="font-medium">{product.name}</p>
-                                                                    <p className="text-sm text-gray-600">{variant.name}</p>
+                                                                    <p className="font-medium text-gray-900 dark:text-gray-100">{product.name}</p>
+                                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{variant.name}</p>
                                                                     <div className="flex gap-2 mt-1">
-                                                                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                                                        <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
                                                                             {product.network}
                                                                         </span>
-                                                                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                                                        <span className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded">
                                                                             {product.product_type.replace('_', ' ').toUpperCase()}
                                                                         </span>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="font-semibold text-green-600">₵{parseFloat(variant.price || 0).toFixed(2)}</p>
-                                                                <p className="text-xs text-gray-500">Base Price</p>
+                                                                <p className="font-semibold text-green-600 dark:text-green-400">₵{parseFloat(variant.price || 0).toFixed(2)}</p>
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400">Base Price</p>
                                                             </div>
                                                         </div>
                                                     ))
                                                 )
                                             ) : (
-                                                <div className="text-center py-8 text-gray-500">
+                                                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                                                     <p>No products available for your role.</p>
                                                     <p className="text-sm mt-1">Contact admin if you think this is an error.</p>
                                                 </div>
@@ -396,7 +426,7 @@ export default function Shop({ auth, shop, products, availableProducts }: ShopPr
                                                 required
                                             />
                                             {parseFloat(agentPrice) > basePrice && (
-                                                <p className="text-sm text-green-600 mt-1">
+                                            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
                                                     Commission: ₵{(parseFloat(agentPrice) - basePrice).toFixed(2)} per item
                                                 </p>
                                             )}

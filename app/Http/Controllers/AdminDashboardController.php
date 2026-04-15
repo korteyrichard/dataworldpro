@@ -141,6 +141,10 @@ class AdminDashboardController extends Controller
             $orders->where('order_pusher_status', $request->input('order_pusher_status'));
         }
 
+        if ($request->has('order_source') && $request->input('order_source') !== '') {
+            $orders->where('order_source', $request->input('order_source'));
+        }
+
         $paginatedOrders = $orders->paginate(50)->appends($request->query());
         
         // Transform orders to include variant information and order source
@@ -155,9 +159,6 @@ class AdminDashboardController extends Controller
                 return $product;
             });
             
-            // Determine order source based on is_guest_order flag
-            $order->order_source = $order->is_guest_order ? 'shop' : 'dashboard';
-            
             return $order;
         });
 
@@ -170,6 +171,7 @@ class AdminDashboardController extends Controller
             'filterOrderPusherStatus' => $request->input('order_pusher_status', ''),
             'searchOrderId' => $request->input('order_id', ''),
             'searchBeneficiaryNumber' => $request->input('beneficiary_number', ''),
+            'filterOrderSource' => $request->input('order_source', ''),
             'dailyTotalSales' => $dailyTotalSales,
         ]);
     }

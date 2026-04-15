@@ -50,15 +50,14 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
         { name: 'Settings', href: route('profile.edit'), icon: 'Settings', current: route().current('profile.edit') || route().current('password.edit') || route().current('appearance') },
     ];
 
-    const storeManagement: NavigationItem[] = user.role !== 'customer' ? [
+    const storeManagement: NavigationItem[] = [
         { name: 'Store Dashboard', href: route('agent.dashboard'), icon: 'Store', current: route().current('agent.dashboard') },
         { name: 'Commissions', href: route('agent.commissions'), icon: 'DollarSign', current: route().current('agent.commissions') },
-        { name: 'Referrals', href: route('agent.referrals'), icon: 'Users', current: route().current('agent.referrals') },
         { name: 'Withdrawals', href: route('agent.withdrawals'), icon: 'CreditCard', current: route().current('agent.withdrawals') },
         { name: 'My Shop', href: route('agent.shop'), icon: 'ShoppingBag', current: route().current('agent.shop') },
-    ] : [];
+    ];
 
-    const upgradeToAgent = user.role === 'customer';
+    const upgradeToAgent = false; // Removed upgrade prompt since all users can access shop features
 
    
 
@@ -89,7 +88,7 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
     };
 
     const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
-        <div className="flex flex-col flex-grow bg-white dark:bg-gray-800 pt-5 pb-4 overflow-y-auto h-full">
+        <div className={`flex flex-col bg-white dark:bg-gray-800 pt-5 pb-4 ${isMobile ? 'h-full' : 'h-screen overflow-y-auto'}`}>
             <div className="flex items-center flex-shrink-0 px-4">
                 <Link href="/">
                     <div className="text-black dark:text-white text-lg font-bold flex flex-row gap-4 items-center justify-between">
@@ -99,24 +98,22 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
                     </div>
                 </Link>
             </div>
-            <nav className="mt-5 flex-1 flex flex-col min-h-screen">
+            <nav className="mt-5 flex-1 flex flex-col">
                 <div className="px-2 space-y-1">
                     {renderNavigationItems(navigation, isMobile)}
                 </div>
                 
                 {/* Store Management Section */}
-                {storeManagement.length > 0 && (
-                    <div className="mt-6">
-                        <div className="px-3 mb-2">
-                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Store Management
-                            </h3>
-                        </div>
-                        <div className="px-2 space-y-1">
-                            {renderNavigationItems(storeManagement, isMobile)}
-                        </div>
+                <div className="mt-6">
+                    <div className="px-3 mb-2">
+                        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Business Features
+                        </h3>
                     </div>
-                )}
+                    <div className="px-2 space-y-1">
+                        {renderNavigationItems(storeManagement, isMobile)}
+                    </div>
+                </div>
                 
                 {/* Upgrade to Agent */}
                 {upgradeToAgent && (
@@ -138,7 +135,7 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
                     </div>
                 )}
                 
-                <a href='https://wa.link/59fwem' className="w-[200px] ml-3 text-left mt-10 px-2 py-2 text-sm font-bold rounded-md text-gray-600 bg-slate-500 dark:text-gray-300 hover:bg-green-600 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white ">
+                <a href='https://wa.me/233559152210' className="w-[200px] ml-3 text-left mt-10 px-2 py-2 text-sm font-bold rounded-md text-gray-600 bg-slate-500 dark:text-gray-300 hover:bg-green-600 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white ">
                      Contact Support
                 </a>
 
@@ -156,7 +153,7 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
             {/* Sidebar for desktop */}
             <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
-                <div className="shadow-md">
+                <div className="shadow-md h-full">
                     <SidebarContent />
                 </div>
             </div>
