@@ -55,7 +55,20 @@ export default function CreateOrderFromPayment({ shop, agent, payment, products 
         e.preventDefault();
         if (!selectedProduct) return;
         
-        post(`/shop/${shop.slug}/create-order-from-payment`);
+        post(`/shop/${shop.slug}/create-order-from-payment`, {
+            onSuccess: (page) => {
+                // Handle success - should redirect to order success page
+                console.log('Order created successfully', page);
+            },
+            onError: (errors) => {
+                // Handle validation errors
+                console.log('Form errors:', errors);
+            },
+            onFinish: () => {
+                // Always called after request completes
+                console.log('Request finished');
+            }
+        });
     };
 
     return (

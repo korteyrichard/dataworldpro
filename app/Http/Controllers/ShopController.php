@@ -125,6 +125,13 @@ class ShopController extends Controller
 
     public function createOrderFromPayment(Request $request, string $slug)
     {
+        // Handle GET requests without form data (browser navigation) by redirecting to shop
+        if ($request->isMethod('GET') && !$request->has(['payment_reference', 'agent_product_id', 'beneficiary_number'])) {
+            return redirect()->route('shop.show', $slug)
+                ->with('error', 'Please use the track order form to create an order from payment.');
+        }
+        
+        // For GET requests with form data, treat as POST (browser form resubmission)
         $request->validate([
             'payment_reference' => 'required|string',
             'agent_product_id' => 'required|exists:agent_products,id',
@@ -166,18 +173,36 @@ class ShopController extends Controller
         $paymentAmount = $paymentData['amount'] / 100;
         $productPrice = floatval($agentProduct->agent_price);
         $priceDifference = $paymentAmount - $productPrice;
-        $maxAllowedDifference = min($productPrice * 0.05, 2.00); // 5% or GHS 2 max
         
-        // Allow payment amount to be higher than product price (for Paystack charges)
-        // but not significantly lower
-        if ($priceDifference < -0.50 || $priceDifference > $maxAllowedDifference) {
+        \Log::info('Price verification', [
+            'payment_amount' => $paymentAmount,
+            'product_price' => $productPrice,
+            'price_difference' => $priceDifference
+        ]);
+        
+        // Only check that payment amount is not significantly lower than product price
+        // Allow any amount higher (for Paystack charges)
+        if ($priceDifference < -0.50) {
+            \Log::error('Price verification failed - payment too low', [
+                'payment_amount' => $paymentAmount,
+                'product_price' => $productPrice,
+                'price_difference' => $priceDifference
+            ]);
+            
             return back()->withErrors([
                 'agent_product_id' => 'Payment amount (GHS ' . number_format($paymentAmount, 2) . 
-                    ') does not reasonably match product price (GHS ' . number_format($productPrice, 2) . ').'
+                    ') is significantly lower than product price (GHS ' . number_format($productPrice, 2) . ').'
             ]);
         }
 
         try {
+            \Log::info('Creating order from payment', [
+                'payment_reference' => $request->payment_reference,
+                'agent_product_id' => $request->agent_product_id,
+                'beneficiary_number' => $request->beneficiary_number,
+                'shop_slug' => $slug
+            ]);
+            
             // Create the order
             $order = Order::create([
                 'user_id' => $agentProduct->agentShop->user_id, // Link to agent's user_id
@@ -194,6 +219,8 @@ class ShopController extends Controller
                 'order_source' => 'shop'
             ]);
 
+            \Log::info('Order created successfully', ['order_id' => $order->id]);
+
             // Attach the product to the order
             $order->products()->attach($agentProduct->product_id, [
                 'quantity' => 1,
@@ -201,6 +228,8 @@ class ShopController extends Controller
                 'beneficiary_number' => $request->beneficiary_number,
                 'product_variant_id' => $agentProduct->product_variant_id,
             ]);
+
+            \Log::info('Product attached to order', ['order_id' => $order->id]);
 
             // Create commission for agent
             if ($agentProduct->commission_amount > 0) {
@@ -214,6 +243,7 @@ class ShopController extends Controller
                     'quantity' => 1,
                     'status' => 'available'
                 ]);
+                \Log::info('Commission created for order', ['order_id' => $order->id]);
             }
 
             \Log::info('Order created from existing payment', [
@@ -225,12 +255,24 @@ class ShopController extends Controller
             // Push order to external APIs based on network and individual service settings
             $this->pushOrderToExternalApis($order);
 
+            \Log::info('Redirecting to order success page', [
+                'order_id' => $order->id,
+                'shop_slug' => $slug
+            ]);
+
             return redirect()->route('shop.order-success', [
                 'slug' => $slug,
                 'order' => $order->id
             ])->with('success', 'Order created successfully from your existing payment!');
             
         } catch (\Exception $e) {
+            \Log::error('Failed to create order from payment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payment_reference' => $request->payment_reference,
+                'agent_product_id' => $request->agent_product_id
+            ]);
+            
             return back()->withErrors(['error' => 'Failed to create order. Please try again or contact support.']);
         }
     }
@@ -423,6 +465,13 @@ class ShopController extends Controller
 
     public function findOrder(Request $request, string $slug)
     {
+        // Handle GET requests without form data (browser navigation) by redirecting to shop
+        if ($request->isMethod('GET') && !$request->has(['payment_reference', 'beneficiary_number'])) {
+            return redirect()->route('shop.show', $slug)
+                ->with('error', 'Please use the track order form to search for your order.');
+        }
+        
+        // For GET requests with form data, treat as POST (browser form resubmission)
         $request->validate([
             'payment_reference' => 'required|string',
             'beneficiary_number' => 'required|string|size:10'

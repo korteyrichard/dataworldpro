@@ -172,12 +172,14 @@ Route::get('/test-domain', function () {
 Route::get('/shop/{slug}', [ShopController::class, 'show'])->name('shop.show');
 Route::post('/shop/{slug}/add-to-cart', [ShopController::class, 'addToCart'])->name('shop.add-to-cart');
 Route::get('/shop/{slug}/order-success/{order}', [ShopController::class, 'orderSuccess'])->name('shop.order-success');
-Route::post('/shop/{slug}/track-order', [ShopController::class, 'findOrder'])->name('shop.find-order');
-Route::post('/shop/{slug}/create-order-from-payment', [ShopController::class, 'createOrderFromPayment'])->name('shop.create-order-from-payment');
+Route::match(['GET', 'POST'], '/shop/{slug}/track-order', [ShopController::class, 'findOrder'])->name('shop.find-order');
 
 // Guest payment routes
 Route::post('/guest/payment/initialize', [\App\Http\Controllers\GuestPaymentController::class, 'initialize'])->name('guest.payment.initialize');
 Route::get('/guest/payment/callback', [\App\Http\Controllers\GuestPaymentController::class, 'callback'])->name('guest.payment.callback');
+
+// Shop order creation - support both GET and POST for browser compatibility
+Route::match(['GET', 'POST'], '/shop/{slug}/create-order-from-payment', [ShopController::class, 'createOrderFromPayment'])->name('shop.create-order-from-payment');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
