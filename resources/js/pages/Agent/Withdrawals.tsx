@@ -20,6 +20,7 @@ interface Withdrawal {
     net_amount: number;
     status: string;
     notes: string;
+    withdrawal_type?: string;
     created_at: string;
 }
 
@@ -38,8 +39,12 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
     const [network, setNetwork] = useState('');
     const [mobileMoneyName, setMobileMoneyName] = useState('');
     const [loading, setLoading] = useState(false);
+    const [walletLoading, setWalletLoading] = useState(false);
     const [withdrawalFee, setWithdrawalFee] = useState(0);
     const [netAmount, setNetAmount] = useState(0);
+    const [walletAmount, setWalletAmount] = useState('');
+    const [walletWithdrawalFee, setWalletWithdrawalFee] = useState(0);
+    const [walletNetAmount, setWalletNetAmount] = useState(0);
 
     // Handle flash messages
     useEffect(() => {
@@ -66,6 +71,31 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
         setWithdrawalFee(fee);
         setNetAmount(net);
     }, [amount]);
+
+    // Calculate fee and net amount when wallet amount changes
+    React.useEffect(() => {
+        const withdrawAmount = parseFloat(walletAmount) || 0;
+        const fee = withdrawAmount * 0.02;
+        const net = withdrawAmount - fee;
+        setWalletWithdrawalFee(fee);
+        setWalletNetAmount(net);
+    }, [walletAmount]);
+
+    const handleWalletWithdrawal = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setWalletLoading(true);
+        
+        router.post(route('agent.withdrawals.wallet'), {
+            amount: parseFloat(walletAmount)
+        }, {
+            onFinish: () => {
+                setWalletLoading(false);
+            },
+            onSuccess: () => {
+                setWalletAmount('');
+            }
+        });
+    };
 
     const handleWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,10 +131,65 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
     return (
         <DashboardLayout user={auth.user} header="Withdrawals">
             <div className="space-y-6">
+                {/* Withdraw to Wallet */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Withdraw to Wallet</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <p>Available Balance: <strong>₵{availableBalance.toFixed(2)}</strong></p>
+                            <p className="text-sm text-orange-600">⚠️ 2% withdrawal fee applies • Instant transfer to your wallet</p>
+                            
+                            <form onSubmit={handleWalletWithdrawal} className="space-y-4">
+                                <div>
+                                    <Label htmlFor="walletAmount">Amount to Transfer</Label>
+                                    <Input
+                                        id="walletAmount"
+                                        type="number"
+                                        step="0.01"
+                                        min={minWithdrawal}
+                                        max={availableBalance}
+                                        placeholder={`Enter amount (min ₵${minWithdrawal})`}
+                                        value={walletAmount}
+                                        onChange={(e) => setWalletAmount(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                
+                                {walletAmount && parseFloat(walletAmount) >= minWithdrawal && (
+                                    <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
+                                        <div className="flex justify-between text-sm">
+                                            <span>Withdrawal Amount:</span>
+                                            <span>₵{parseFloat(walletAmount).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm text-destructive">
+                                            <span>Withdrawal Fee (2%):</span>
+                                            <span>-₵{walletWithdrawalFee.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between font-medium text-orange-800 dark:text-orange-200 border-t pt-1">
+                                            <span>You will receive in wallet:</span>
+                                            <span>₵{walletNetAmount.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <Button 
+                                    type="submit" 
+                                    disabled={walletLoading || !walletAmount} 
+                                    className="w-full bg-orange-600 hover:bg-orange-700"
+                                >
+                                    {walletLoading ? 'Processing...' : 'Withdraw to Wallet'}
+                                </Button>
+                            </form>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Request Withdrawal */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Request Withdrawal</CardTitle>
+                        <CardTitle>Request Mobile Money Withdrawal</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -229,7 +314,7 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
                                 <thead>
                                     <tr className="border-b">
                                         <th className="text-left p-2">Amount</th>
-                                        <th className="text-left p-2">Mobile Money</th>
+                                        <th className="text-left p-2">Destination</th>
                                         <th className="text-left p-2">Fee</th>
                                         <th className="text-left p-2">Net Amount</th>
                                         <th className="text-left p-2">Status</th>
@@ -242,7 +327,12 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
                                         <tr key={withdrawal.id} className="border-b">
                                             <td className="p-2">₵{Number(withdrawal.amount || 0).toFixed(2)}</td>
                                             <td className="p-2">
-                                                {withdrawal.network && withdrawal.phone_number ? (
+                                                {withdrawal.withdrawal_type === 'wallet' ? (
+                                                    <div className="text-sm">
+                                                        <div className="text-green-600 font-medium">Wallet Transfer</div>
+                                                        <div className="text-muted-foreground text-xs">Instant</div>
+                                                    </div>
+                                                ) : withdrawal.network && withdrawal.phone_number ? (
                                                     <div className="text-sm">
                                                         <div>{withdrawal.network}</div>
                                                         <div className="text-muted-foreground">{withdrawal.phone_number}</div>

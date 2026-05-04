@@ -76,6 +76,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/products', [AgentController::class, 'addProduct'])->name('products.add');
         Route::delete('/products/{agentProduct}', [AgentController::class, 'removeProduct'])->name('products.remove');
         Route::post('/withdrawals', [AgentController::class, 'requestWithdrawal'])->name('withdrawals.request');
+        Route::post('/withdrawals/wallet', [AgentController::class, 'requestWalletWithdrawal'])->name('withdrawals.wallet');
     });
     
     // Upgrade to agent routes (available to authenticated users only)

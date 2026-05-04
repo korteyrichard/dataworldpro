@@ -17,7 +17,8 @@ class Withdrawal extends Model
         'net_amount',
         'status',
         'notes',
-        'processed_at'
+        'processed_at',
+        'withdrawal_type'
     ];
 
     protected $casts = [

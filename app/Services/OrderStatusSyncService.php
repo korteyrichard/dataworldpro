@@ -12,6 +12,19 @@ class OrderStatusSyncService
     private $codeCraftAgentEmail = 'ammababaah@gmail.com';
     private $mtnApiKey = '';
 
+    public function syncSingleOrderStatus(Order $order)
+    {
+        try {
+            if (strtolower($order->network) === 'mtn') {
+                $this->syncMtnOrderStatus($order);
+            } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {
+                $this->syncCodeCraftOrderStatus($order);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to sync single order status', ['orderId' => $order->id, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function syncOrderStatuses()
     {
         $processingOrders = Order::with(['user', 'products' => function($query) {

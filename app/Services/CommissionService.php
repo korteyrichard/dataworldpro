@@ -152,4 +152,50 @@ class CommissionService
             'referral_earnings' => (float) ($referralEarnings ?? 0)
         ];
     }
+
+    public function processWithdrawal(int $agentId, float $amount): void
+    {
+        $remainingAmount = $amount;
+        
+        // First, withdraw from available commissions
+        $availableCommissions = Commission::where('agent_id', $agentId)
+            ->where('status', 'available')
+            ->whereRaw('(commission_amount * quantity) > withdrawn_amount')
+            ->orderBy('available_at')
+            ->get();
+        
+        foreach ($availableCommissions as $commission) {
+            if ($remainingAmount <= 0) break;
+            
+            $totalCommission = $commission->commission_amount * $commission->quantity;
+            $availableFromCommission = $totalCommission - $commission->withdrawn_amount;
+            
+            if ($availableFromCommission > 0) {
+                $withdrawFromThis = min($remainingAmount, $availableFromCommission);
+                $commission->increment('withdrawn_amount', $withdrawFromThis);
+                $remainingAmount -= $withdrawFromThis;
+            }
+        }
+        
+        // Then, withdraw from available referral commissions
+        if ($remainingAmount > 0) {
+            $availableReferrals = ReferralCommission::where('referrer_id', $agentId)
+                ->where('status', 'available')
+                ->whereRaw('referral_amount > withdrawn_amount')
+                ->orderBy('available_at')
+                ->get();
+            
+            foreach ($availableReferrals as $referralCommission) {
+                if ($remainingAmount <= 0) break;
+                
+                $availableFromReferral = $referralCommission->referral_amount - $referralCommission->withdrawn_amount;
+                
+                if ($availableFromReferral > 0) {
+                    $withdrawFromThis = min($remainingAmount, $availableFromReferral);
+                    $referralCommission->increment('withdrawn_amount', $withdrawFromThis);
+                    $remainingAmount -= $withdrawFromThis;
+                }
+            }
+        }
+    }
 }

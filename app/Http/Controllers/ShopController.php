@@ -67,9 +67,27 @@ class ShopController extends Controller
             abort(404, 'Order not found');
         }
 
-        // Only show success page for completed orders
-        if (!in_array($order->status, ['completed', 'pending'])) {
+        // Only show success page for valid order statuses
+        if (!in_array($order->status, ['completed', 'pending', 'processing'])) {
             abort(404, 'Order not found');
+        }
+
+        // Refresh the order from database to get the latest status
+        $order->refresh();
+        
+        // If order is still pending and was created more than 2 minutes ago, try to sync status
+        if ($order->status === 'pending' && $order->created_at->diffInMinutes(now()) > 2) {
+            try {
+                // Try to sync the order status from external APIs
+                $this->syncOrderStatus($order);
+                // Refresh again after sync attempt
+                $order->refresh();
+            } catch (\Exception $e) {
+                \Log::error('Failed to sync order status in orderSuccess', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
 
         // Load order with products
@@ -514,6 +532,22 @@ class ShopController extends Controller
                     ]);
                 }
 
+                // Refresh the order to get the latest status
+                $shopOrder->refresh();
+                
+                // If order is still pending and was created more than 2 minutes ago, try to sync status
+                if ($shopOrder->status === 'pending' && $shopOrder->created_at->diffInMinutes(now()) > 2) {
+                    try {
+                        $this->syncOrderStatus($shopOrder);
+                        $shopOrder->refresh();
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to sync order status in findOrder', [
+                            'order_id' => $shopOrder->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
                 // Order found and beneficiary matches - redirect to success page
                 return redirect()->route('shop.order-success', [
                     'slug' => $slug,
@@ -570,6 +604,12 @@ class ShopController extends Controller
         // If no specific size key, return the first attribute value
         $values = array_values($attributes);
         return !empty($values) ? $values[0] : null;
+    }
+
+    private function syncOrderStatus(Order $order)
+    {
+        $orderStatusSyncService = new \App\Services\OrderStatusSyncService();
+        $orderStatusSyncService->syncSingleOrderStatus($order);
     }
 
     private function pushOrderToExternalApis(Order $order)

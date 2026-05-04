@@ -139,13 +139,16 @@ class AgentController extends Controller
 
         // Calculate withdrawal fee (2%)
         $withdrawalFee = $request->amount * 0.02;
-        $totalDeduction = $request->amount + $withdrawalFee;
+        $netAmount = $request->amount - $withdrawalFee;
 
-        if ($totalDeduction > $stats['available_balance']) {
+        if ($request->amount > $stats['available_balance']) {
             return redirect()->back()->withErrors([
-                'amount' => 'Insufficient balance. You need ₵' . number_format($totalDeduction, 2) . ' (including 2% fee of ₵' . number_format($withdrawalFee, 2) . ')'
+                'amount' => 'Insufficient balance. Available: ₵' . number_format($stats['available_balance'], 2)
             ]);
         }
+
+        // Process the withdrawal from commissions (only deduct the withdrawal amount)
+        $this->commissionService->processWithdrawal($user->id, $request->amount);
 
         $withdrawal = Withdrawal::create([
             'agent_id' => $user->id,
@@ -154,11 +157,53 @@ class AgentController extends Controller
             'network' => $request->network,
             'mobile_money_name' => $request->mobile_money_name,
             'withdrawal_fee' => $withdrawalFee,
-            'net_amount' => $request->amount - $withdrawalFee,
-            'status' => 'pending'
+            'net_amount' => $netAmount,
+            'status' => 'pending',
+            'withdrawal_type' => 'mobile_money'
         ]);
 
         return redirect()->back()->with('success', 'Withdrawal request submitted successfully. You will receive ₵' . number_format($withdrawal->net_amount, 2) . ' to ' . $request->network . ' (' . $request->phone_number . ') after approval.');
+    }
+
+    public function requestWalletWithdrawal(Request $request)
+    {
+        $minWithdrawal = Setting::get('minimum_withdrawal_amount', 10);
+        
+        $request->validate([
+            'amount' => "required|numeric|min:{$minWithdrawal}"
+        ]);
+
+        $user = Auth::user();
+        $stats = $this->commissionService->getAgentStats($user->id);
+
+        // Calculate withdrawal fee (2%)
+        $withdrawalFee = $request->amount * 0.02;
+        $netAmount = $request->amount - $withdrawalFee;
+
+        if ($request->amount > $stats['available_balance']) {
+            return redirect()->back()->withErrors([
+                'amount' => 'Insufficient balance. Available: ₵' . number_format($stats['available_balance'], 2)
+            ]);
+        }
+
+        // Process the withdrawal from commissions (only deduct the withdrawal amount)
+        $this->commissionService->processWithdrawal($user->id, $request->amount);
+        
+        // Add net amount to wallet (after fee deduction)
+        $user->increment('wallet_balance', $netAmount);
+        
+        $withdrawal = Withdrawal::create([
+            'agent_id' => $user->id,
+            'amount' => $request->amount,
+            'withdrawal_fee' => $withdrawalFee,
+            'net_amount' => $netAmount,
+            'status' => 'approved',
+            'withdrawal_type' => 'wallet',
+            'processed_at' => now(),
+            'notes' => 'Instant wallet transfer'
+        ]);
+
+        return redirect()->back()->with('success', '₵' . number_format($netAmount, 2) . ' has been transferred to your wallet instantly! (₵' . number_format($withdrawalFee, 2) . ' fee applied)');
     }
 
     public function showUpgrade(Request $request)

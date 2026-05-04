@@ -62,6 +62,15 @@ class OrderController extends Controller
             return response()->json(['error' => 'Insufficient wallet balance'], 400);
         }
 
+        // Check for existing orders with processing or pending status for the same beneficiary number
+        $existingOrder = Order::where('beneficiary_number', $request->beneficiary_number)
+            ->whereIn('status', ['processing', 'pending'])
+            ->first();
+            
+        if ($existingOrder) {
+            return response()->json(['error' => 'An order is already being processed for this beneficiary number. Please wait for it to complete before placing a new order.'], 400);
+        }
+
         $order = DB::transaction(function() use ($request, $product, $variant) {
             auth()->user()->decrement('wallet_balance', $variant->price);
             
