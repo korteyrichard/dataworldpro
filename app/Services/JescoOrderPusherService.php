@@ -207,23 +207,23 @@ class JescoOrderPusherService
         
         // Map variant sizes to actual Jesco package IDs
         $packageMap = [
-            '1gb' => 'MTN11-1GB',
-            '2gb' => 'MTN11-2GB',
-            '3gb' => 'MTN11-3GB',
-            '4gb' => 'MTN11-4GB',
-            '5gb' => 'MTN11-5GB',
-            '6gb' => 'MTN11-6GB',
-            '7gb' => 'MTN11-7GB',
-            '8gb' => 'MTN11-8GB',
-            '9gb' => 'MTN11-9GB',
-            '10gb' => 'MTN11-10GB',
-            '15gb' => 'MTN11-15GB',
-            '20gb' => 'MTN11-20GB',
-            '25gb' => 'MTN11-25GB',
-            '30gb' => 'MTN11-30GB',
-            '40gb' => 'MTN11-40GB',
-            '50gb' => 'MTN11-50GB',
-            '100gb' => 'MTN11-100GB'
+            '1gb' => 'MTN8-1GB',
+            '2gb' => 'MTN8-2GB',
+            '3gb' => 'MTN8-3GB',
+            '4gb' => 'MTN8-4GB',
+            '5gb' => 'MTN8-5GB',
+            '6gb' => 'MTN8-6GB',
+            '7gb' => 'MTN8-7GB',
+            '8gb' => 'MTN8-8GB',
+            '9gb' => 'MTN8-9GB',
+            '10gb' => 'MTN8-10GB',
+            '15gb' => 'MTN8-15GB',
+            '20gb' => 'MTN8-20GB',
+            '25gb' => 'MTN8-25GB',
+            '30gb' => 'MTN8-30GB',
+            '40gb' => 'MTN8-40GB',
+            '50gb' => 'MTN8-50GB',
+            '100gb' => 'MTN8-100GB'
         ];
 
         $mappedPackage = $packageMap[$size] ?? null;

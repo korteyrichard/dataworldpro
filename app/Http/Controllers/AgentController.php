@@ -148,7 +148,7 @@ class AgentController extends Controller
         }
 
         // Process the withdrawal from commissions (only deduct the withdrawal amount)
-        $this->commissionService->processWithdrawal($user->id, $request->amount);
+        // $this->commissionService->processWithdrawal($user->id, $request->amount);
 
         $withdrawal = Withdrawal::create([
             'agent_id' => $user->id,

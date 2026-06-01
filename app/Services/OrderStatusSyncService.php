@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Services\MoolreSmsService;
+use App\Services\Skanka5OrderStatusSyncService;
+use App\Services\Skanka5OrderStatusSyncTelecelService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,8 +19,20 @@ class OrderStatusSyncService
         try {
             if (strtolower($order->network) === 'mtn') {
                 $this->syncMtnOrderStatus($order);
+                
+                // Also try Skanka5 if enabled
+                if ((bool) \App\Models\Setting::get('skanka5_order_pusher_enabled', 1)) {
+                    $skanka5Sync = new Skanka5OrderStatusSyncService();
+                    $skanka5Sync->syncSingleOrderStatus($order);
+                }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {
                 $this->syncCodeCraftOrderStatus($order);
+                
+                // Also try Skanka5 Telecel if enabled and it's a Telecel order
+                if (strtolower($order->network) === 'telecel' && (bool) \App\Models\Setting::get('skanka5_telecel_order_pusher_enabled', 1)) {
+                    $skanka5TelecelSync = new Skanka5OrderStatusSyncTelecelService();
+                    $skanka5TelecelSync->syncSingleOrderStatus($order);
+                }
             }
         } catch (\Exception $e) {
             Log::error('Failed to sync single order status', ['orderId' => $order->id, 'error' => $e->getMessage()]);
@@ -35,8 +49,20 @@ class OrderStatusSyncService
             try {
                 if (strtolower($order->network) === 'mtn') {
                     $this->syncMtnOrderStatus($order);
+                    
+                    // Also try Skanka5 if enabled
+                    if ((bool) \App\Models\Setting::get('skanka5_order_pusher_enabled', 1)) {
+                        $skanka5Sync = new Skanka5OrderStatusSyncService();
+                        $skanka5Sync->syncSingleOrderStatus($order);
+                    }
                 } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
                     $this->syncCodeCraftOrderStatus($order);
+                    
+                    // Also try Skanka5 Telecel if enabled and it's a Telecel order
+                    if (strtolower($order->network) === 'telecel' && (bool) \App\Models\Setting::get('skanka5_telecel_order_pusher_enabled', 1)) {
+                        $skanka5TelecelSync = new Skanka5OrderStatusSyncTelecelService();
+                        $skanka5TelecelSync->syncSingleOrderStatus($order);
+                    }
                 }
             } catch (\Exception $e) {
                 Log::error('Failed to sync order status', ['orderId' => $order->id, 'error' => $e->getMessage()]);

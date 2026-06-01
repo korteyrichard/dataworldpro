@@ -123,6 +123,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('toggle-codecraft-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftOrderPusher'])->name('toggle.codecraft.order.pusher');
     Route::post('toggle-jesco-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJescoOrderPusher'])->name('toggle.jesco.order.pusher');
     Route::post('toggle-easydata-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleEasydataOrderPusher'])->name('toggle.easydata.order.pusher');
+    Route::post('toggle-skanka5-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSkanka5OrderPusher'])->name('toggle.skanka5.order.pusher');
+    Route::post('toggle-skanka5-telecel-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSkanka5TelecelOrderPusher'])->name('toggle.skanka5.telecel.order.pusher');
     
     // Alert routes
     Route::resource('alerts', \App\Http\Controllers\Admin\AlertController::class);

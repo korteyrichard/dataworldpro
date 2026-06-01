@@ -10,6 +10,8 @@ use App\Services\OrderPusherService;
 use App\Services\CodeCraftOrderPusherService;
 use App\Services\JescoOrderPusherService;
 use App\Services\EasyDataOrderPusherService;
+use App\Services\Skanka5OrderPusherService;
+use App\Services\Skanka5OrderPusherTelecelService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -620,6 +622,8 @@ class ShopController extends Controller
             $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);
             $jescoEnabled = (bool) Setting::get('jesco_order_pusher_enabled', 1);
             $easydataEnabled = (bool) Setting::get('easydata_order_pusher_enabled', 1);
+            $skanka5Enabled = (bool) Setting::get('skanka5_order_pusher_enabled', 1);
+            $skanka5TelecelEnabled = (bool) Setting::get('skanka5_telecel_order_pusher_enabled', 1);
             
             if (strtolower($order->network) === 'mtn') {
                 if ($jaybartEnabled) {
@@ -637,13 +641,25 @@ class ShopController extends Controller
                     $easydataOrderPusher->pushOrderToApi($order);
                     \Log::info('Order pushed to EasyData API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
-                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled) {
+                if ($skanka5Enabled) {
+                    $skanka5OrderPusher = new Skanka5OrderPusherService();
+                    $skanka5OrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to Skanka5 API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled) {
                     \Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
                 }
-            } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at']) && $codecraftEnabled) {
-                $codeCraftOrderPusher = new CodeCraftOrderPusherService();
-                $codeCraftOrderPusher->pushOrderToApi($order);
-                \Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);
+            } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {
+                if ($codecraftEnabled) {
+                    $codeCraftOrderPusher = new CodeCraftOrderPusherService();
+                    $codeCraftOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                if (strtolower($order->network) === 'telecel' && $skanka5TelecelEnabled) {
+                    $skanka5TelecelOrderPusher = new Skanka5OrderPusherTelecelService();
+                    $skanka5TelecelOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to Skanka5 Telecel API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
             } else {
                 \Log::info('No enabled order pusher for network', ['orderId' => $order->id, 'network' => $order->network]);
             }

@@ -40,6 +40,8 @@ class AdminDashboardController extends Controller
             'codecraftOrderPusherEnabled' => (bool) Setting::get('codecraft_order_pusher_enabled', 1),
             'jescoOrderPusherEnabled' => (bool) Setting::get('jesco_order_pusher_enabled', 1),
             'easydataOrderPusherEnabled' => (bool) Setting::get('easydata_order_pusher_enabled', 1),
+            'skanka5OrderPusherEnabled' => (bool) Setting::get('skanka5_order_pusher_enabled', 1),
+            'skanka5TelecelOrderPusherEnabled' => (bool) Setting::get('skanka5_telecel_order_pusher_enabled', 1),
         ]);
     }
 
@@ -796,6 +798,30 @@ class AdminDashboardController extends Controller
         
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "EasyData order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle Skanka5 order pusher functionality.
+     */
+    public function toggleSkanka5OrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('skanka5_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Skanka5 order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle Skanka5 Telecel order pusher functionality.
+     */
+    public function toggleSkanka5TelecelOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('skanka5_telecel_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Skanka5 Telecel order pusher {$status} successfully.");
     }
 
     /**

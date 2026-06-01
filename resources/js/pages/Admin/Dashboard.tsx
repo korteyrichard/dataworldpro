@@ -38,6 +38,8 @@ interface AdminDashboardProps extends PageProps {
   codecraftOrderPusherEnabled: boolean;
   jescoOrderPusherEnabled: boolean;
   easydataOrderPusherEnabled: boolean;
+  skanka5OrderPusherEnabled: boolean;
+  skanka5TelecelOrderPusherEnabled: boolean;
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -53,6 +55,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   codecraftOrderPusherEnabled,
   jescoOrderPusherEnabled,
   easydataOrderPusherEnabled,
+  skanka5OrderPusherEnabled,
+  skanka5TelecelOrderPusherEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
 
@@ -77,6 +81,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const toggleEasydataOrderPusher = () => {
     router.post('/admin/toggle-easydata-order-pusher', {
       enabled: !easydataOrderPusherEnabled
+    });
+  };
+
+  const toggleSkanka5OrderPusher = () => {
+    router.post('/admin/toggle-skanka5-order-pusher', {
+      enabled: !skanka5OrderPusherEnabled
+    });
+  };
+
+  const toggleSkanka5TelecelOrderPusher = () => {
+    router.post('/admin/toggle-skanka5-telecel-order-pusher', {
+      enabled: !skanka5TelecelOrderPusherEnabled
     });
   };
 
@@ -203,6 +219,54 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                       easydataOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Skanka5 Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Skanka5 Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {skanka5OrderPusherEnabled ? 'MTN orders are being pushed to Skanka5 API' : 'Skanka5 order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleSkanka5OrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    skanka5OrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      skanka5OrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Skanka5 Telecel Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Skanka5 Telecel Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {skanka5TelecelOrderPusherEnabled ? 'Telecel orders are being pushed to Skanka5 API' : 'Skanka5 Telecel order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleSkanka5TelecelOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    skanka5TelecelOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      skanka5TelecelOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>

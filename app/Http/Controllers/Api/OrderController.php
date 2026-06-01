@@ -13,6 +13,8 @@ use App\Services\OrderPusherService;
 use App\Services\CodeCraftOrderPusherService;
 use App\Services\JescoOrderPusherService;
 use App\Services\EasyDataOrderPusherService;
+use App\Services\Skanka5OrderPusherService;
+use App\Services\Skanka5OrderPusherTelecelService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
 
@@ -121,9 +123,19 @@ class OrderController extends Controller
                     $easydataOrderPusher = new EasyDataOrderPusherService();
                     $easydataOrderPusher->pushOrderToApi($order);
                 }
-            } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime']) && Setting::get('codecraft_order_pusher_enabled', 1)) {
-                $codeCraftOrderPusher = new CodeCraftOrderPusherService();
-                $codeCraftOrderPusher->pushOrderToApi($order);
+                if (Setting::get('skanka5_order_pusher_enabled', 1)) {
+                    $skanka5OrderPusher = new Skanka5OrderPusherService();
+                    $skanka5OrderPusher->pushOrderToApi($order);
+                }
+            } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
+                if (Setting::get('codecraft_order_pusher_enabled', 1)) {
+                    $codeCraftOrderPusher = new CodeCraftOrderPusherService();
+                    $codeCraftOrderPusher->pushOrderToApi($order);
+                }
+                if (strtolower($order->network) === 'telecel' && Setting::get('skanka5_telecel_order_pusher_enabled', 1)) {
+                    $skanka5TelecelOrderPusher = new Skanka5OrderPusherTelecelService();
+                    $skanka5TelecelOrderPusher->pushOrderToApi($order);
+                }
             } else {
                 Log::info('Order pusher disabled for network - skipping API call', ['orderId' => $order->id, 'network' => $order->network]);
             }

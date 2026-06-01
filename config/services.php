@@ -59,4 +59,9 @@ return [
         'secret_key' => env('PAYSTACK_SECRET_KEY'),
     ],
 
+    'skanka5' => [
+        'base_url' => env('SKANKA5_BASE_URL', 'https://agent.skanka5.com/api/v1'),
+        'api_key' => env('SKANKA5_API_KEY'),
+    ],
+
 ];

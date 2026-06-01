@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Setting;
 use App\Models\UserShop;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
@@ -181,105 +182,108 @@ class AdminController extends Controller
 
 
 
-    public function agents()
+    public function agents(Request $request)
     {
         if (!Auth::user()->isAdmin()) {
             return redirect()->route('home')->with('error', 'Access denied');
         }
 
-        // Get all users who have shops, regardless of role
-        $storeOwners = \App\Models\User::whereHas('shop')
+        $search = $request->get('search');
+        
+        // Build query for users with shops
+        $storeOwnersQuery = \App\Models\User::whereHas('shop')
             ->with(['shop', 'commissions', 'withdrawals'])
-            ->withCount(['commissions', 'withdrawals'])
-            ->latest()
-            ->get()
-            ->map(function ($user) {
-                $totalCommissions = $user->commissions->sum(function ($commission) {
-                    return $commission->commission_amount * $commission->quantity;
-                });
-                $availableCommissions = $user->commissions->where('status', 'available')->sum(function ($commission) {
-                    return $commission->commission_amount * $commission->quantity;
-                });
-                $totalWithdrawals = $user->withdrawals->sum('amount');
-                $pendingWithdrawals = $user->withdrawals->where('status', 'pending')->sum('amount');
-
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'created_at' => $user->created_at,
-                    'agent_shop' => $user->shop ? [
-                        'name' => $user->shop->name,
-                        'slug' => $user->shop->slug,
-                        'is_active' => $user->shop->is_active,
-                    ] : null,
-                    'stats' => [
-                        'total_commissions' => (float) $totalCommissions,
-                        'available_commissions' => (float) $availableCommissions,
-                        'total_withdrawals' => (float) $totalWithdrawals,
-                        'pending_withdrawals' => (float) $pendingWithdrawals,
-                        'commissions_count' => $user->commissions_count,
-                        'withdrawals_count' => $user->withdrawals_count,
-                    ]
-                ];
-            });
-
-        // Also get admins (even if they don't have shops) for management purposes
-        $admins = \App\Models\User::where('role', 'admin')
-            ->whereDoesntHave('shop') // Only admins without shops (to avoid duplicates)
+            ->withCount(['commissions', 'withdrawals']);
+            
+        // Build query for admins without shops
+        $adminsQuery = \App\Models\User::where('role', 'admin')
+            ->whereDoesntHave('shop')
             ->with(['shop', 'commissions', 'withdrawals'])
-            ->withCount(['commissions', 'withdrawals'])
-            ->latest()
-            ->get()
-            ->map(function ($admin) {
-                $totalCommissions = $admin->commissions->sum(function ($commission) {
-                    return $commission->commission_amount * $commission->quantity;
-                });
-                $availableCommissions = $admin->commissions->where('status', 'available')->sum(function ($commission) {
-                    return $commission->commission_amount * $commission->quantity;
-                });
-                $totalWithdrawals = $admin->withdrawals->sum('amount');
-                $pendingWithdrawals = $admin->withdrawals->where('status', 'pending')->sum('amount');
-
-                return [
-                    'id' => $admin->id,
-                    'name' => $admin->name,
-                    'email' => $admin->email,
-                    'role' => $admin->role,
-                    'created_at' => $admin->created_at,
-                    'agent_shop' => null,
-                    'stats' => [
-                        'total_commissions' => (float) $totalCommissions,
-                        'available_commissions' => (float) $availableCommissions,
-                        'total_withdrawals' => (float) $totalWithdrawals,
-                        'pending_withdrawals' => (float) $pendingWithdrawals,
-                        'commissions_count' => $admin->commissions_count,
-                        'withdrawals_count' => $admin->withdrawals_count,
-                    ]
-                ];
+            ->withCount(['commissions', 'withdrawals']);
+            
+        // Apply search filter if provided
+        if ($search) {
+            $storeOwnersQuery->where('email', 'like', '%' . $search . '%');
+            $adminsQuery->where('email', 'like', '%' . $search . '%');
+        }
+        
+        // Get all matching users (we need to combine them before pagination)
+        $storeOwners = $storeOwnersQuery->latest()->get();
+        $admins = $adminsQuery->latest()->get();
+        
+        // Combine and transform the data
+        $allUsers = $storeOwners->concat($admins)->map(function ($user) {
+            $totalCommissions = $user->commissions->sum(function ($commission) {
+                return $commission->commission_amount * $commission->quantity;
             });
+            $availableCommissions = $user->commissions->where('status', 'available')->sum(function ($commission) {
+                return $commission->commission_amount * $commission->quantity;
+            });
+            $totalWithdrawals = $user->withdrawals->sum('amount');
+            $pendingWithdrawals = $user->withdrawals->where('status', 'pending')->sum('amount');
 
-        // Combine store owners and admins
-        $allUsers = $storeOwners->concat($admins);
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'created_at' => $user->created_at,
+                'agent_shop' => $user->shop ? [
+                    'name' => $user->shop->name,
+                    'slug' => $user->shop->slug,
+                    'is_active' => $user->shop->is_active,
+                ] : null,
+                'stats' => [
+                    'total_commissions' => (float) $totalCommissions,
+                    'available_commissions' => (float) $availableCommissions,
+                    'total_withdrawals' => (float) $totalWithdrawals,
+                    'pending_withdrawals' => (float) $pendingWithdrawals,
+                    'commissions_count' => $user->commissions_count,
+                    'withdrawals_count' => $user->withdrawals_count,
+                ]
+            ];
+        });
+        
+        // Manual pagination
+        $perPage = 50;
+        $currentPage = $request->get('page', 1);
+        $total = $allUsers->count();
+        $offset = ($currentPage - 1) * $perPage;
+        $items = $allUsers->slice($offset, $perPage)->values();
+        
+        $paginatedUsers = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'pageName' => 'page',
+            ]
+        );
+        
+        $paginatedUsers->appends($request->query());
 
-        // Calculate overall stats
+        // Calculate overall stats (use all users, not just paginated)
         $totalStores = \App\Models\UserShop::count();
         $activeStores = \App\Models\UserShop::where('is_active', true)->count();
         $totalStoreOwners = \App\Models\User::whereHas('shop')->count();
         $totalAdmins = \App\Models\User::where('role', 'admin')->count();
         
         $overallStats = [
-            'total_agents' => $totalStoreOwners, // Total users with stores
+            'total_agents' => $totalStoreOwners,
             'total_admins' => $totalAdmins,
-            'agents_with_shops' => $activeStores, // Active stores
+            'agents_with_shops' => $activeStores,
             'total_agent_earnings' => $allUsers->sum('stats.total_commissions'),
             'total_pending_withdrawals' => $allUsers->sum('stats.pending_withdrawals'),
         ];
 
         return inertia('Admin/Agents', [
-            'agents' => $allUsers,
-            'stats' => $overallStats
+            'agents' => $paginatedUsers,
+            'stats' => $overallStats,
+            'filters' => [
+                'search' => $search,
+            ]
         ]);
     }
 
