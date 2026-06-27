@@ -14,18 +14,26 @@ use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
-    public function withdrawals()
+    public function withdrawals(Request $request)
     {
         if (!Auth::user()->isAdmin()) {
             return redirect()->route('home')->with('error', 'Access denied');
         }
 
-        $withdrawals = Withdrawal::with('agent.shop')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $query = Withdrawal::with('agent.shop')
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('search')) {
+            $query->whereHas('agent', function ($q) use ($request) {
+                $q->where('email', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $withdrawals = $query->paginate(50)->appends($request->query());
 
         return inertia('Admin/Withdrawals', [
-            'withdrawals' => $withdrawals
+            'withdrawals' => $withdrawals,
+            'filters' => ['search' => $request->search]
         ]);
     }
 
@@ -287,15 +295,22 @@ class AdminController extends Controller
         ]);
     }
 
-    public function commissions()
+    public function commissions(Request $request)
     {
         if (!Auth::user()->isAdmin()) {
             return redirect()->route('home')->with('error', 'Access denied');
         }
 
-        $commissions = \App\Models\Commission::with(['agent.shop', 'product', 'order'])
-            ->latest()
-            ->paginate(50);
+        $query = \App\Models\Commission::with(['agent.shop', 'product', 'order'])
+            ->latest();
+
+        if ($request->filled('search')) {
+            $query->whereHas('agent', function ($q) use ($request) {
+                $q->where('email', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $commissions = $query->paginate(50)->appends($request->query());
 
         // Calculate commission statistics
         $stats = [
@@ -313,7 +328,8 @@ class AdminController extends Controller
 
         return inertia('Admin/Commissions', [
             'commissions' => $commissions,
-            'stats' => $stats
+            'stats' => $stats,
+            'filters' => ['search' => $request->search]
         ]);
     }
 
@@ -325,6 +341,7 @@ class AdminController extends Controller
 
         $settings = [
             'minimum_withdrawal_amount' => Setting::get('minimum_withdrawal_amount', 10),
+            'minimum_wallet_withdrawal_amount' => Setting::get('minimum_wallet_withdrawal_amount', 5),
             'referral_commission_amount' => Setting::get('referral_commission_amount', 5),
             'agent_upgrade_fee' => Setting::get('agent_upgrade_fee', 30),
             'track_order_video_url' => Setting::get('track_order_video_url', ''),
@@ -344,6 +361,7 @@ class AdminController extends Controller
 
         $request->validate([
             'minimum_withdrawal_amount' => 'required|numeric|min:1',
+            'minimum_wallet_withdrawal_amount' => 'required|numeric|min:1',
             'referral_commission_amount' => 'required|numeric|min:0',
             'agent_upgrade_fee' => 'required|numeric|min:0',
             'track_order_video_url' => 'nullable|url',
@@ -351,6 +369,7 @@ class AdminController extends Controller
         ]);
 
         Setting::set('minimum_withdrawal_amount', $request->minimum_withdrawal_amount);
+        Setting::set('minimum_wallet_withdrawal_amount', $request->minimum_wallet_withdrawal_amount);
         Setting::set('referral_commission_amount', $request->referral_commission_amount);
         Setting::set('agent_upgrade_fee', $request->agent_upgrade_fee);
         Setting::set('track_order_video_url', $request->track_order_video_url);

@@ -36,10 +36,13 @@ interface AdminDashboardProps extends PageProps {
   };
   jaybartOrderPusherEnabled: boolean;
   codecraftOrderPusherEnabled: boolean;
+  codecraftMtnOrderPusherEnabled: boolean;
   jescoOrderPusherEnabled: boolean;
   easydataOrderPusherEnabled: boolean;
   skanka5OrderPusherEnabled: boolean;
   skanka5TelecelOrderPusherEnabled: boolean;
+  dataflowOrderPusherEnabled: boolean;
+  masterNetOrderPusherEnabled: boolean;
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -53,10 +56,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   stats,
   jaybartOrderPusherEnabled,
   codecraftOrderPusherEnabled,
+  codecraftMtnOrderPusherEnabled,
   jescoOrderPusherEnabled,
   easydataOrderPusherEnabled,
   skanka5OrderPusherEnabled,
   skanka5TelecelOrderPusherEnabled,
+  dataflowOrderPusherEnabled,
+  masterNetOrderPusherEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
 
@@ -69,6 +75,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const toggleCodecraftOrderPusher = () => {
     router.post('/admin/toggle-codecraft-order-pusher', {
       enabled: !codecraftOrderPusherEnabled
+    });
+  };
+
+  const toggleCodecraftMtnOrderPusher = () => {
+    router.post('/admin/toggle-codecraft-mtn-order-pusher', {
+      enabled: !codecraftMtnOrderPusherEnabled
     });
   };
 
@@ -93,6 +105,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const toggleSkanka5TelecelOrderPusher = () => {
     router.post('/admin/toggle-skanka5-telecel-order-pusher', {
       enabled: !skanka5TelecelOrderPusherEnabled
+    });
+  };
+
+  const toggleDataflowOrderPusher = () => {
+    router.post('/admin/toggle-dataflow-order-pusher', {
+      enabled: !dataflowOrderPusherEnabled
+    });
+  };
+
+  const toggleMasterNetOrderPusher = () => {
+    router.post('/admin/toggle-successbizhub-order-pusher', {
+      enabled: !masterNetOrderPusherEnabled
     });
   };
 
@@ -267,6 +291,78 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                       skanka5TelecelOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* CodeCraft MTN Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">CodeCraft MTN Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {codecraftMtnOrderPusherEnabled ? 'MTN orders are being pushed to CodeCraft API' : 'CodeCraft MTN order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleCodecraftMtnOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    codecraftMtnOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      codecraftMtnOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Dataflow Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Dataflow Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {dataflowOrderPusherEnabled ? 'MTN orders are being pushed to Dataflow API' : 'Dataflow order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleDataflowOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    dataflowOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      dataflowOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* MasterNet DataHub Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">MasterNet DataHub Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {masterNetOrderPusherEnabled ? 'Orders are being pushed to MasterNet DataHub API' : 'MasterNet DataHub order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleMasterNetOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    masterNetOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      masterNetOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>

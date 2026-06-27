@@ -9,6 +9,8 @@ interface Transaction {
   id: number;
   type: string;
   amount: number;
+  balance_before: number | null;
+  balance_after: number | null;
   description: string;
   created_at: string;
 }
@@ -166,14 +168,15 @@ export default function Transactions({ auth }: TransactionsPageProps) {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bal Before</th>
                     <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bal After</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
                   {transactions.data.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="text-center py-8 text-gray-400 dark:text-gray-500 text-lg">
+                      <td colSpan={5} className="text-center py-8 text-gray-400 dark:text-gray-500 text-lg">
                         No transactions found.
                       </td>
                     </tr>
@@ -188,11 +191,14 @@ export default function Transactions({ auth }: TransactionsPageProps) {
                             {typeLabels[t.type] || t.type}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300">
-                          {t.description}
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-gray-600 dark:text-gray-300">
+                          {t.balance_before != null ? `GHC ${Number(t.balance_before).toLocaleString()}` : '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-bold text-gray-900 dark:text-gray-100">
                           GHC {t.amount.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-gray-600 dark:text-gray-300">
+                          {t.balance_after != null ? `GHC ${Number(t.balance_after).toLocaleString()}` : '-'}
                         </td>
                       </tr>
                     ))
@@ -216,10 +222,20 @@ export default function Transactions({ auth }: TransactionsPageProps) {
                         {typeLabels[t.type] || t.type}
                       </span>
                     </div>
-                    <p className="text-gray-800 dark:text-gray-200 font-medium">{t.description}</p>
-                    <div className="text-right text-lg font-bold text-gray-900 dark:text-white mt-2">
-                      GHC {t.amount.toLocaleString()}
+                    <p className="text-gray-800 dark:text-gray-200 font-medium">{typeLabels[t.type] || t.type}</p>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-xs text-gray-500">
+                        {t.balance_before != null ? `Bal Before: GHC ${Number(t.balance_before).toLocaleString()}` : ''}
+                      </span>
+                      <span className="text-lg font-bold text-gray-900 dark:text-white">
+                        GHC {t.amount.toLocaleString()}
+                      </span>
                     </div>
+                    {t.balance_after != null && (
+                      <div className="text-right text-xs text-gray-500 mt-1">
+                        Bal After: GHC {Number(t.balance_after).toLocaleString()}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

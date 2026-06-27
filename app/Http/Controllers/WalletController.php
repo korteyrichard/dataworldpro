@@ -17,13 +17,13 @@ class WalletController extends Controller
         return Inertia::render('Dashboard/Wallet', [
             'transactions' => Transaction::where('user_id', auth()->id())
                 ->whereIn('type', ['topup', 'admin_credit', 'admin_debit']) // Include admin transactions
-                ->select('id', 'amount', 'status', 'type', 'description', 'reference', 'created_at')
+                ->select('id', 'amount', 'balance_before', 'balance_after', 'status', 'type', 'description', 'reference', 'created_at')
                 ->latest()
                 ->paginate(10),
             'pendingTransactions' => Transaction::where('user_id', auth()->id())
                 ->where('type', 'topup')
                 ->where('status', 'pending')
-                ->select('id', 'amount', 'status', 'type', 'description', 'reference', 'created_at')
+                ->select('id', 'amount', 'balance_before', 'balance_after', 'status', 'type', 'description', 'reference', 'created_at')
                 ->latest()
                 ->get(),
             'verifyTopupVideoUrl' => Setting::get('verify_topup_video_url', '')
@@ -35,7 +35,7 @@ class WalletController extends Controller
         \Log::info('verifyPayment method called', ['request_data' => $request->all(), 'user_id' => auth()->id()]);
         
         $request->validate([
-            'reference' => 'required|string'
+            'reference' => 'required|string|max:100|alpha_dash'
         ]);
 
         $reference = $request->reference;
@@ -69,15 +69,6 @@ class WalletController extends Controller
 
         \Log::info('Transaction found', ['transaction_id' => $transaction->id, 'status' => $transaction->status]);
 
-        // If already completed, prevent double crediting
-        if ($transaction->status === 'completed') {
-            \Log::info('Transaction already completed');
-            return response()->json([
-                'success' => false,
-                'message' => 'Transaction already verified'
-            ]);
-        }
-
         \Log::info('About to call Paystack API', ['reference' => $reference]);
         
         try {
@@ -92,25 +83,42 @@ class WalletController extends Controller
             \Log::info('Paystack API response', ['status_code' => $response->status(), 'response' => $paystackData]);
 
             if ($response->successful() && $paystackData['status'] && $paystackData['data']['status'] === 'success') {
-                // Use database transaction to ensure atomicity
-                DB::transaction(function () use ($transaction, $userId, $paystackData) {
-                    // Update transaction status and save Paystack reference
-                    $transaction->update([
+                // Use pessimistic locking to prevent double crediting
+                $credited = DB::transaction(function () use ($transaction, $userId, $paystackData) {
+                    // Re-fetch with lock to prevent race condition
+                    $lockedTransaction = Transaction::where('id', $transaction->id)->lockForUpdate()->first();
+                    
+                    if ($lockedTransaction->status === 'completed') {
+                        return false;
+                    }
+
+                    $user = User::where('id', $userId)->lockForUpdate()->first();
+                    $balanceBefore = $user->wallet_balance;
+
+                    $lockedTransaction->update([
                         'status' => 'completed',
-                        'reference' => $paystackData['data']['reference'] ?? $transaction->reference
+                        'balance_before' => $balanceBefore,
+                        'balance_after' => $balanceBefore + $lockedTransaction->amount,
+                        'reference' => $paystackData['data']['reference'] ?? $lockedTransaction->reference
                     ]);
                     
-                    // Update user wallet balance
-                    $user = User::find($userId);
-                    $user->increment('wallet_balance', $transaction->amount);
+                    $user->increment('wallet_balance', $lockedTransaction->amount);
+
+                    return true;
                 });
+
+                if (!$credited) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Transaction already verified'
+                    ]);
+                }
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Payment verified and balance updated'
                 ]);
             } else {
-                // Update transaction with Paystack reference even if failed
                 if (isset($paystackData['data']['reference'])) {
                     $transaction->update(['reference' => $paystackData['data']['reference']]);
                 }

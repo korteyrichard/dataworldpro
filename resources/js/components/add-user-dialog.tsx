@@ -79,12 +79,17 @@ import { useForm } from "@inertiajs/react";
               <Label htmlFor="role" className="text-right">
                 Role
               </Label>
-              <Input
+              <select
                 id="role"
                 value={data.role}
                 onChange={(e) => setData("role", e.target.value)}
-                className="col-span-3"
-              />
+                className="col-span-3 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              >
+                <option value="customer">Customer</option>
+                <option value="agent">Agent</option>
+                <option value="dealer">Dealer</option>
+                <option value="admin">Admin</option>
+              </select>
             </div>
           </div>
           <DialogFooter>

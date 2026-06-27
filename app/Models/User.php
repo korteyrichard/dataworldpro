@@ -106,6 +106,11 @@ class User extends Authenticatable
         return $this->hasMany(ReferralCommission::class, 'referrer_id');
     }
 
+    public function webhooks()
+    {
+        return $this->hasMany(Webhook::class);
+    }
+
     // Agent orders (orders placed through this agent's shop)
     public function agentOrders()
     {
@@ -161,6 +166,16 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Check if the user is a dealer.
+     *
+     * @return bool
+     */
+    public function isDealer(): bool
+    {
+        return $this->role === 'dealer';
     }
 
     /**

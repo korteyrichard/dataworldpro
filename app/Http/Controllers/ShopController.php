@@ -12,6 +12,9 @@ use App\Services\JescoOrderPusherService;
 use App\Services\EasyDataOrderPusherService;
 use App\Services\Skanka5OrderPusherService;
 use App\Services\Skanka5OrderPusherTelecelService;
+use App\Services\CodeCraftMtnOrderPusherService;
+use App\Services\DataflowOrderPusherService;
+use App\Services\MasterNetOrderPusherService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -222,63 +225,58 @@ class ShopController extends Controller
                 'beneficiary_number' => $request->beneficiary_number,
                 'shop_slug' => $slug
             ]);
-            
-            // Create the order
-            $order = Order::create([
-                'user_id' => $agentProduct->agentShop->user_id, // Link to agent's user_id
-                'agent_id' => $agentProduct->agentShop->user_id, // Keep agent_id for tracking
-                'total' => $paymentAmount,
-                'total_amount' => $paymentAmount,
-                'status' => 'completed',
-                'payment_method' => 'paystack',
-                'payment_reference' => $request->payment_reference,
-                'buyer_email' => $paymentData['customer']['email'],
-                'beneficiary_number' => $request->beneficiary_number,
-                'network' => $agentProduct->product->network,
-                'is_guest_order' => true,
-                'order_source' => 'shop'
-            ]);
 
-            \Log::info('Order created successfully', ['order_id' => $order->id]);
+            // Use DB transaction with lock to prevent duplicate orders for same payment reference
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $agentProduct, $paymentData, $paymentAmount, $shop) {
+                // Re-check with lock inside transaction
+                $existingOrder = Order::where('payment_reference', $request->payment_reference)
+                    ->lockForUpdate()
+                    ->first();
 
-            // Attach the product to the order
-            $order->products()->attach($agentProduct->product_id, [
-                'quantity' => 1,
-                'price' => $paymentAmount,
-                'beneficiary_number' => $request->beneficiary_number,
-                'product_variant_id' => $agentProduct->product_variant_id,
-            ]);
+                if ($existingOrder) {
+                    throw new \Exception('DUPLICATE_ORDER');
+                }
 
-            \Log::info('Product attached to order', ['order_id' => $order->id]);
-
-            // Create commission for agent
-            if ($agentProduct->commission_amount > 0) {
-                $agentProduct->agentShop->user->commissions()->create([
-                    'order_id' => $order->id,
-                    'product_id' => $agentProduct->product_id,
-                    'product_variant_id' => $agentProduct->product_variant_id,
-                    'base_price' => $agentProduct->productVariant->price ?? 0,
-                    'agent_price' => $agentProduct->agent_price,
-                    'commission_amount' => $agentProduct->commission_amount,
-                    'quantity' => 1,
-                    'status' => 'available'
+                $order = Order::create([
+                    'user_id' => $agentProduct->agentShop->user_id,
+                    'agent_id' => $agentProduct->agentShop->user_id,
+                    'total' => $paymentAmount,
+                    'total_amount' => $paymentAmount,
+                    'status' => 'completed',
+                    'payment_method' => 'paystack',
+                    'payment_reference' => $request->payment_reference,
+                    'buyer_email' => $paymentData['customer']['email'],
+                    'beneficiary_number' => $request->beneficiary_number,
+                    'network' => $agentProduct->product->network,
+                    'is_guest_order' => true,
+                    'order_source' => 'shop'
                 ]);
-                \Log::info('Commission created for order', ['order_id' => $order->id]);
-            }
 
-            \Log::info('Order created from existing payment', [
-                'order_id' => $order->id,
-                'payment_reference' => $request->payment_reference,
-                'shop_slug' => $slug
-            ]);
+                $order->products()->attach($agentProduct->product_id, [
+                    'quantity' => 1,
+                    'price' => $paymentAmount,
+                    'beneficiary_number' => $request->beneficiary_number,
+                    'product_variant_id' => $agentProduct->product_variant_id,
+                ]);
 
-            // Push order to external APIs based on network and individual service settings
+                if ($agentProduct->commission_amount > 0) {
+                    $agentProduct->agentShop->user->commissions()->create([
+                        'order_id' => $order->id,
+                        'product_id' => $agentProduct->product_id,
+                        'product_variant_id' => $agentProduct->product_variant_id,
+                        'base_price' => $agentProduct->productVariant->price ?? 0,
+                        'agent_price' => $agentProduct->agent_price,
+                        'commission_amount' => $agentProduct->commission_amount,
+                        'quantity' => 1,
+                        'status' => 'available'
+                    ]);
+                }
+
+                return $order;
+            });
+
+            // Push order to external APIs outside the transaction
             $this->pushOrderToExternalApis($order);
-
-            \Log::info('Redirecting to order success page', [
-                'order_id' => $order->id,
-                'shop_slug' => $slug
-            ]);
 
             return redirect()->route('shop.order-success', [
                 'slug' => $slug,
@@ -286,9 +284,12 @@ class ShopController extends Controller
             ])->with('success', 'Order created successfully from your existing payment!');
             
         } catch (\Exception $e) {
+            if ($e->getMessage() === 'DUPLICATE_ORDER') {
+                return back()->withErrors(['payment_reference' => 'This payment has already been used for an order.']);
+            }
+
             \Log::error('Failed to create order from payment', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
                 'payment_reference' => $request->payment_reference,
                 'agent_product_id' => $request->agent_product_id
             ]);
@@ -620,6 +621,7 @@ class ShopController extends Controller
             // Get service settings
             $jaybartEnabled = (bool) Setting::get('jaybart_order_pusher_enabled', 1);
             $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);
+            $codecraftMtnEnabled = (bool) Setting::get('codecraft_mtn_order_pusher_enabled', 1);
             $jescoEnabled = (bool) Setting::get('jesco_order_pusher_enabled', 1);
             $easydataEnabled = (bool) Setting::get('easydata_order_pusher_enabled', 1);
             $skanka5Enabled = (bool) Setting::get('skanka5_order_pusher_enabled', 1);
@@ -646,7 +648,24 @@ class ShopController extends Controller
                     $skanka5OrderPusher->pushOrderToApi($order);
                     \Log::info('Order pushed to Skanka5 API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
-                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled) {
+                if ($codecraftMtnEnabled) {
+                    $codeCraftMtnOrderPusher = new CodeCraftMtnOrderPusherService();
+                    $codeCraftMtnOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to CodeCraft MTN API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                $dataflowEnabled = (bool) Setting::get('dataflow_order_pusher_enabled', 0);
+                if ($dataflowEnabled) {
+                    $dataflowOrderPusher = new DataflowOrderPusherService();
+                    $dataflowOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to Dataflow API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                $masterNetEnabled = (bool) Setting::get('successbizhub_order_pusher_enabled', 0);
+                if ($masterNetEnabled) {
+                    $masterNetOrderPusher = new MasterNetOrderPusherService();
+                    $masterNetOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to MasterNet DataHub API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled && !$codecraftMtnEnabled && !$dataflowEnabled && !$masterNetEnabled) {
                     \Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
                 }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {

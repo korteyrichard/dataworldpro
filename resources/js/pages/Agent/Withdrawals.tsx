@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { router } from '@inertiajs/react';
 import { useToast } from '@/components/ui/use-toast';
+import Pagination from '@/components/pagination';
 
 interface Withdrawal {
     id: number;
@@ -26,12 +27,14 @@ interface Withdrawal {
 
 interface WithdrawalsProps {
     auth: { user: any };
-    withdrawals: Withdrawal[];
+    withdrawals: any;
     availableBalance: number;
     minWithdrawal: number;
+    minWalletWithdrawal: number;
 }
 
-export default function Withdrawals({ auth, withdrawals, availableBalance, minWithdrawal }: WithdrawalsProps) {
+export default function Withdrawals({ auth, withdrawals, availableBalance, minWithdrawal, minWalletWithdrawal }: WithdrawalsProps) {
+    const withdrawalsData: Withdrawal[] = withdrawals?.data || withdrawals || [];
     const { toast } = useToast();
     const { flash, errors } = usePage().props as any;
     const [amount, setAmount] = useState('');
@@ -148,16 +151,16 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
                                         id="walletAmount"
                                         type="number"
                                         step="0.01"
-                                        min={minWithdrawal}
+                                        min={minWalletWithdrawal}
                                         max={availableBalance}
-                                        placeholder={`Enter amount (min ₵${minWithdrawal})`}
+                                        placeholder={`Enter amount (min ₵${minWalletWithdrawal})`}
                                         value={walletAmount}
                                         onChange={(e) => setWalletAmount(e.target.value)}
                                         required
                                     />
                                 </div>
                                 
-                                {walletAmount && parseFloat(walletAmount) >= minWithdrawal && (
+                                {walletAmount && parseFloat(walletAmount) >= minWalletWithdrawal && (
                                     <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
                                         <div className="flex justify-between text-sm">
                                             <span>Withdrawal Amount:</span>
@@ -323,7 +326,7 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {withdrawals.map((withdrawal) => (
+                                    {withdrawalsData.map((withdrawal) => (
                                         <tr key={withdrawal.id} className="border-b">
                                             <td className="p-2">₵{Number(withdrawal.amount || 0).toFixed(2)}</td>
                                             <td className="p-2">
@@ -358,6 +361,7 @@ export default function Withdrawals({ auth, withdrawals, availableBalance, minWi
                                 </tbody>
                             </table>
                         </div>
+                        {withdrawals?.links && <Pagination data={withdrawals} />}
                     </CardContent>
                 </Card>
             </div>

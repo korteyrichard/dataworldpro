@@ -167,7 +167,7 @@ class AgentController extends Controller
 
     public function requestWalletWithdrawal(Request $request)
     {
-        $minWithdrawal = Setting::get('minimum_withdrawal_amount', 10);
+        $minWithdrawal = Setting::get('minimum_wallet_withdrawal_amount', 5);
         
         $request->validate([
             'amount' => "required|numeric|min:{$minWithdrawal}"
@@ -253,7 +253,7 @@ class AgentController extends Controller
     public function commissions()
     {
         $user = Auth::user();
-        $commissions = $user->commissions()->with(['product', 'order'])->latest()->get();
+        $commissions = $user->commissions()->with(['product', 'order'])->latest()->paginate(50);
         
         return inertia('Agent/Commissions', [
             'commissions' => $commissions
@@ -318,9 +318,10 @@ class AgentController extends Controller
     public function withdrawals()
     {
         $user = Auth::user();
-        $withdrawals = $user->withdrawals()->latest()->get();
+        $withdrawals = $user->withdrawals()->latest()->paginate(50);
         $availableBalance = 0;
         $minWithdrawal = Setting::get('minimum_withdrawal_amount', 10);
+        $minWalletWithdrawal = Setting::get('minimum_wallet_withdrawal_amount', 5);
         
         try {
             $stats = $this->commissionService->getAgentStats($user->id);
@@ -332,7 +333,8 @@ class AgentController extends Controller
         return inertia('Agent/Withdrawals', [
             'withdrawals' => $withdrawals,
             'availableBalance' => $availableBalance,
-            'minWithdrawal' => $minWithdrawal
+            'minWithdrawal' => $minWithdrawal,
+            'minWalletWithdrawal' => $minWalletWithdrawal
         ]);
     }
 

@@ -45,6 +45,7 @@ return [
     ],
 
     'jesco' => [
+        'base_url' => env('JESCO_BASE_URL', 'https://jesscostore.com/api/v1'),
         'api_key' => env('JESCO_API_KEY'),
     ],
 
@@ -62,6 +63,32 @@ return [
     'skanka5' => [
         'base_url' => env('SKANKA5_BASE_URL', 'https://agent.skanka5.com/api/v1'),
         'api_key' => env('SKANKA5_API_KEY'),
+    ],
+
+    'codecraft' => [
+        'base_url' => env('CODE_CRAFTER_BASE_URL', 'https://api.codecraftnetwork.com/api'),
+        'api_key' => env('CODE_CRAFTER_API_KEY'),
+    ],
+
+    'codecraft_mtn' => [
+        'base_url' => env('CODE_CRAFT_MTN_BASE_URL', 'https://api.codecraftnetwork.com/api'),
+        'api_key' => env('CODE_CRAFT_MTN_API_KEY', '260120115831-cblWhB-6VZp1J-Z3xYeI-joVlSi-w1GNCx'),
+    ],
+
+    'dataflow' => [
+        'base_url' => env('DATAFLOW_BASE_URL', 'https://dataflowghana.com/api/v1'),
+        'api_key' => env('DATAFLOW_API_KEY'),
+    ],
+
+    'masternet' => [
+        'base_url' => env('MASTERNET_BASE_URL', 'https://www.masternetdatahub.com/api/v1'),
+        'api_key' => env('MASTERNET_API_KEY'),
+    ],
+
+    'webhooks' => [
+        'masternetdatahub' => env('WEBHOOK_SECRET_MASTERNETDATAHUB'),
+        'jessco' => env('WEBHOOK_SECRET_JESSCO'),
+        'skanka5' => env('WEBHOOK_SECRET_SKANKA5'),
     ],
 
 ];

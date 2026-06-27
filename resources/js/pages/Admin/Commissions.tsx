@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { router } from '@inertiajs/react';
+import Pagination from '@/components/pagination';
 
 interface Commission {
     id: number;
@@ -24,13 +27,7 @@ interface Commission {
 
 interface AdminCommissionsProps {
     auth: { user: any };
-    commissions: {
-        data: Commission[];
-        current_page: number;
-        last_page: number;
-        per_page: number;
-        total: number;
-    };
+    commissions: any;
     stats: {
         total_commissions: number;
         pending_commissions: number;
@@ -39,9 +36,16 @@ interface AdminCommissionsProps {
         total_referral_commissions: number;
         available_referral_commissions: number;
     };
+    filters?: { search?: string };
 }
 
-export default function AdminCommissions({ auth, commissions, stats }: AdminCommissionsProps) {
+export default function AdminCommissions({ auth, commissions, stats, filters }: AdminCommissionsProps) {
+    const [search, setSearch] = useState(filters?.search || '');
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.get(route('admin.commissions'), { search: search || undefined }, { preserveState: true });
+    };
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -126,6 +130,26 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
                         <p className="text-sm text-gray-600">
                             Showing {commissionsData.length} of {commissions?.total || 0} shop commissions
                         </p>
+                        <form onSubmit={handleSearch} className="flex gap-2 mt-2">
+                            <Input
+                                placeholder="Search by email..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="max-w-xs"
+                            />
+                            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                                Search
+                            </button>
+                            {filters?.search && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setSearch(''); router.get(route('admin.commissions')); }}
+                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </form>
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
@@ -187,6 +211,7 @@ export default function AdminCommissions({ auth, commissions, stats }: AdminComm
                                 </tbody>
                             </table>
                         </div>
+                        {commissions?.links && <Pagination data={commissions} />}
                     </CardContent>
                 </Card>
             </div>

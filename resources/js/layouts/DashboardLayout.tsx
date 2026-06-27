@@ -46,7 +46,7 @@ export default function DashboardLayout({ user, header, children }: DashboardLay
         { name: 'Orders', href: route('dashboard.orders'), icon: 'Package', current: route().current('dashboard.orders') },
         { name: 'Afa', href: route('dashboard.afa'), icon: 'Receipt', current: route().current('dashboard.afa') },
         { name: 'Transactions', href: route('dashboard.transactions'), icon: 'Receipt', current: route().current('dashboard.transactions') },
-        ...(user.role === 'agent' || user.role === 'admin' ? [{ name: 'API Docs', href: route('dashboard.api-docs'), icon: 'Code' as IconName, current: route().current('dashboard.api-docs') }] : []),
+        ...(user.role === 'agent' || user.role === 'admin' || user.role === 'dealer' ? [{ name: 'API Docs', href: route('dashboard.api-docs'), icon: 'Code' as IconName, current: route().current('dashboard.api-docs') }] : []),
         { name: 'Settings', href: route('profile.edit'), icon: 'Settings', current: route().current('profile.edit') || route().current('password.edit') || route().current('appearance') },
     ];
 

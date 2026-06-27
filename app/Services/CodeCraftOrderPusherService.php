@@ -10,8 +10,14 @@ use App\Services\MoolreSmsService;
 
 class CodeCraftOrderPusherService
 {
-    private $apiKey = '';
-    private $baseUrl = 'https://api.codecraftnetwork.com/api';
+    private $apiKey;
+    private $baseUrl;
+
+    public function __construct()
+    {
+        $this->baseUrl = config('services.codecraft.base_url');
+        $this->apiKey = config('services.codecraft.api_key');
+    }
 
     public function pushOrderToApi(Order $order)
     {

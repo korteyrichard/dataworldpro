@@ -15,6 +15,9 @@ use App\Services\JescoOrderPusherService;
 use App\Services\EasyDataOrderPusherService;
 use App\Services\Skanka5OrderPusherService;
 use App\Services\Skanka5OrderPusherTelecelService;
+use App\Services\CodeCraftMtnOrderPusherService;
+use App\Services\DataflowOrderPusherService;
+use App\Services\MasterNetOrderPusherService;
 use App\Models\Setting;
 
 class OrdersController extends Controller
@@ -30,22 +33,29 @@ class OrdersController extends Controller
 
         // Search by order ID
         if ($request->filled('order_id')) {
-            $query->where('id', $request->order_id);
+            $query->where('id', (int) $request->order_id);
         }
 
-        // Search by beneficiary number
+        // Search by beneficiary number (escape LIKE wildcards in user input)
         if ($request->filled('beneficiary_number')) {
-            $query->where('beneficiary_number', 'like', '%' . $request->beneficiary_number . '%');
+            $escaped = str_replace(['%', '_'], ['\%', '\_'], $request->beneficiary_number);
+            $query->where('beneficiary_number', 'like', '%' . $escaped . '%');
         }
 
-        // Filter by status
+        // Filter by status (whitelist allowed values)
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $allowed = ['pending', 'processing', 'completed', 'failed', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'];
+            if (in_array($request->status, $allowed, true)) {
+                $query->where('status', $request->status);
+            }
         }
 
-        // Filter by network
+        // Filter by network (whitelist allowed values)
         if ($request->filled('network')) {
-            $query->where('network', $request->network);
+            $allowedNetworks = ['mtn', 'telecel', 'ishare', 'bigtime', 'at', 'MTN', 'Telecel', 'iShare', 'Bigtime', 'AT'];
+            if (in_array($request->network, $allowedNetworks, true)) {
+                $query->where('network', $request->network);
+            }
         }
 
         $orders = $query->latest()->paginate(10)->appends($request->query());
@@ -66,7 +76,7 @@ class OrdersController extends Controller
 
         return Inertia::render('Dashboard/orders', [
             'orders' => $orders,
-            'filters' => $request->only(['order_id', 'beneficiary_number', 'status', 'network'])
+            'filters' => array_map(fn($v) => is_string($v) ? e($v) : $v, $request->only(['order_id', 'beneficiary_number', 'status', 'network']))
         ]);
     }
 
@@ -101,7 +111,19 @@ class OrdersController extends Controller
         DB::beginTransaction();
         Log::info('Database transaction started.');
         try {
-            // Deduct wallet balance (use bcsub for decimal math and cast to float for decimal:2)
+            // Lock the user row to prevent concurrent checkouts from overdrawing balance
+            $user = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+
+            // Re-check balance after acquiring lock
+            if ($user->wallet_balance < $total) {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'Insufficient wallet balance. Top up to proceed with the purchase.');
+            }
+
+            // Track running balance for transaction records
+            $runningBalance = (float) $user->wallet_balance;
+
+            // Deduct wallet balance
             $user->wallet_balance = (float) bcsub((string) $user->wallet_balance, (string) $total, 2);
             $user->save();
             Log::info('Wallet balance deducted.', ['userId' => $user->id, 'newWalletBalance' => $user->wallet_balance]);
@@ -134,10 +156,14 @@ class OrdersController extends Controller
                 Log::info('Product attached to order.', ['orderId' => $order->id, 'productId' => $item->product_id, 'beneficiaryNumber' => $item->beneficiary_number]);
 
                 // Create a transaction record for this order
+                $balanceBefore = $runningBalance;
+                $runningBalance = (float) bcsub((string) $runningBalance, (string) $itemTotal, 2);
                 \App\Models\Transaction::create([
                     'user_id' => $user->id,
                     'order_id' => $order->id,
                     'amount' => $itemTotal,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $runningBalance,
                     'status' => 'completed',
                     'type' => 'order',
                     'description' => 'Order placed for ' . $network . ' data/airtime.',
@@ -157,10 +183,13 @@ class OrdersController extends Controller
             // Push orders to external APIs based on network and individual service settings
             $jaybartEnabled = (bool) Setting::get('jaybart_order_pusher_enabled', 1);
             $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);
+            $codecraftMtnEnabled = (bool) Setting::get('codecraft_mtn_order_pusher_enabled', 1);
             $jescoEnabled = (bool) Setting::get('jesco_order_pusher_enabled', 1);
             $easydataEnabled = (bool) Setting::get('easydata_order_pusher_enabled', 1);
             $skanka5Enabled = (bool) Setting::get('skanka5_order_pusher_enabled', 1);
             $skanka5TelecelEnabled = (bool) Setting::get('skanka5_telecel_order_pusher_enabled', 1);
+            $dataflowEnabled = (bool) Setting::get('dataflow_order_pusher_enabled', 0);
+            $masterNetEnabled = (bool) Setting::get('successbizhub_order_pusher_enabled', 0);
             
             foreach ($createdOrders as $order) {
                 try {
@@ -185,7 +214,22 @@ class OrdersController extends Controller
                             $skanka5OrderPusher->pushOrderToApi($order);
                             Log::info('Order pushed to Skanka5 API', ['orderId' => $order->id, 'network' => $order->network]);
                         }
-                        if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled) {
+                        if ($codecraftMtnEnabled) {
+                            $codeCraftMtnOrderPusher = new CodeCraftMtnOrderPusherService();
+                            $codeCraftMtnOrderPusher->pushOrderToApi($order);
+                            Log::info('Order pushed to CodeCraft MTN API', ['orderId' => $order->id, 'network' => $order->network]);
+                        }
+                        if ($dataflowEnabled) {
+                            $dataflowOrderPusher = new DataflowOrderPusherService();
+                            $dataflowOrderPusher->pushOrderToApi($order);
+                            Log::info('Order pushed to Dataflow API', ['orderId' => $order->id, 'network' => $order->network]);
+                        }
+                        if ($masterNetEnabled) {
+                            $masterNetOrderPusher = new MasterNetOrderPusherService();
+                            $masterNetOrderPusher->pushOrderToApi($order);
+                            Log::info('Order pushed to MasterNet DataHub API', ['orderId' => $order->id, 'network' => $order->network]);
+                        }
+                        if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled && !$codecraftMtnEnabled && !$dataflowEnabled && !$masterNetEnabled) {
                             Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
                         }
                     } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {
@@ -218,7 +262,7 @@ class OrdersController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Checkout failed during transaction.', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return redirect()->back()->with('error', 'Checkout failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Checkout failed. Please try again.');
         }
     }
 }

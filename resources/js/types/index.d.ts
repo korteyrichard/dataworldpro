@@ -56,6 +56,8 @@ export interface Transaction {
     user_id: number;
     order_id: number | null;
     amount: string;
+    balance_before: string | null;
+    balance_after: string | null;
     status: 'pending' | 'completed' | 'failed' | 'cancelled';
     type: 'wallet_topup' | 'order_payment' | 'agent_fee' | 'refund';
     description: string;

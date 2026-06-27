@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PaystackGuestService;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class GuestPaymentController extends Controller

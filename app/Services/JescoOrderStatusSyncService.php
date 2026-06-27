@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\Log;
 
 class JescoOrderStatusSyncService
 {
-    private $baseUrl = 'https://jesscostore.com/api/v1';
+    private $baseUrl;
     private $apiKey;
 
     public function __construct()
     {
-        $this->apiKey = config('services.jesco.api_key', 'jsk_your_api_key_here');
+        $this->baseUrl = config('services.jesco.base_url');
+        $this->apiKey = config('services.jesco.api_key');
     }
 
     public function syncOrderStatuses()

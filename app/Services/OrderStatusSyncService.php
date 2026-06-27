@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Services\MoolreSmsService;
 use App\Services\Skanka5OrderStatusSyncService;
 use App\Services\Skanka5OrderStatusSyncTelecelService;
+use App\Services\DataflowOrderStatusSyncService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -24,6 +25,12 @@ class OrderStatusSyncService
                 if ((bool) \App\Models\Setting::get('skanka5_order_pusher_enabled', 1)) {
                     $skanka5Sync = new Skanka5OrderStatusSyncService();
                     $skanka5Sync->syncSingleOrderStatus($order);
+                }
+                
+                // Also try Dataflow if enabled
+                if ((bool) \App\Models\Setting::get('dataflow_order_pusher_enabled', 0)) {
+                    $dataflowSync = new DataflowOrderStatusSyncService();
+                    $dataflowSync->syncSingleOrderStatus($order);
                 }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {
                 $this->syncCodeCraftOrderStatus($order);
@@ -54,6 +61,12 @@ class OrderStatusSyncService
                     if ((bool) \App\Models\Setting::get('skanka5_order_pusher_enabled', 1)) {
                         $skanka5Sync = new Skanka5OrderStatusSyncService();
                         $skanka5Sync->syncSingleOrderStatus($order);
+                    }
+                    
+                    // Also try Dataflow if enabled
+                    if ((bool) \App\Models\Setting::get('dataflow_order_pusher_enabled', 0)) {
+                        $dataflowSync = new DataflowOrderStatusSyncService();
+                        $dataflowSync->syncSingleOrderStatus($order);
                     }
                 } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
                     $this->syncCodeCraftOrderStatus($order);

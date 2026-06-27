@@ -8,6 +8,8 @@ import { Youtube } from 'lucide-react';
 interface Transaction {
   id: number;
   amount: number;
+  balance_before: number | null;
+  balance_after: number | null;
   status: string;
   type: string;
   description: string;
@@ -226,6 +228,8 @@ export default function Wallet({ auth, transactions, pendingTransactions, verify
                 <tr>
                   <th className="p-3 border whitespace-nowrap">ID</th>
                   <th className="p-3 border whitespace-nowrap">Amount</th>
+                  <th className="p-3 border whitespace-nowrap">Bal Before</th>
+                  <th className="p-3 border whitespace-nowrap">Bal After</th>
                   <th className="p-3 border whitespace-nowrap">Type</th>
                   <th className="p-3 border whitespace-nowrap">Status</th>
                   <th className="p-3 border whitespace-nowrap">Date</th>
@@ -236,7 +240,7 @@ export default function Wallet({ auth, transactions, pendingTransactions, verify
                 {transactions.data.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={8}
                       className="p-4 text-center text-gray-500 dark:text-gray-400"
                     >
                       No wallet transactions found.
@@ -247,6 +251,8 @@ export default function Wallet({ auth, transactions, pendingTransactions, verify
                     <tr key={tx.id} className="border-t dark:border-gray-700">
                       <td className="p-3 border">{tx.id}</td>
                       <td className="p-3 border">GHS {Number(tx.amount).toFixed(2)}</td>
+                      <td className="p-3 border">{tx.balance_before != null ? `GHS ${Number(tx.balance_before).toFixed(2)}` : '-'}</td>
+                      <td className="p-3 border">{tx.balance_after != null ? `GHS ${Number(tx.balance_after).toFixed(2)}` : '-'}</td>
                       <td className="p-3 border capitalize">{tx.type.replace('_', ' ')}</td>
                       <td className="p-3 border">{tx.status}</td>
                       <td className="p-3 border">

@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 interface Settings {
     minimum_withdrawal_amount: number;
+    minimum_wallet_withdrawal_amount: number;
     referral_commission_amount: number;
     agent_upgrade_fee: number;
     track_order_video_url: string;
@@ -25,6 +26,7 @@ export default function Settings({ auth, settings }: Props) {
     const { flash } = usePage().props as any;
     const { data, setData, post, processing, errors } = useForm({
         minimum_withdrawal_amount: settings.minimum_withdrawal_amount,
+        minimum_wallet_withdrawal_amount: settings.minimum_wallet_withdrawal_amount,
         referral_commission_amount: settings.referral_commission_amount,
         agent_upgrade_fee: settings.agent_upgrade_fee,
         track_order_video_url: settings.track_order_video_url || '',
@@ -73,7 +75,7 @@ export default function Settings({ auth, settings }: Props) {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
                                         <Label htmlFor="minimum_withdrawal_amount">
-                                            Minimum Withdrawal Amount (GHS)
+                                            Minimum MoMo Withdrawal Amount (GHS)
                                         </Label>
                                         <Input
                                             id="minimum_withdrawal_amount"
@@ -86,6 +88,24 @@ export default function Settings({ auth, settings }: Props) {
                                         />
                                         {errors.minimum_withdrawal_amount && (
                                             <p className="text-sm text-red-500">{errors.minimum_withdrawal_amount}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="minimum_wallet_withdrawal_amount">
+                                            Minimum Wallet Withdrawal Amount (GHS)
+                                        </Label>
+                                        <Input
+                                            id="minimum_wallet_withdrawal_amount"
+                                            type="number"
+                                            min="1"
+                                            step="0.01"
+                                            value={data.minimum_wallet_withdrawal_amount}
+                                            onChange={(e) => setData('minimum_wallet_withdrawal_amount', parseFloat(e.target.value))}
+                                            className={errors.minimum_wallet_withdrawal_amount ? 'border-red-500' : ''}
+                                        />
+                                        {errors.minimum_wallet_withdrawal_amount && (
+                                            <p className="text-sm text-red-500">{errors.minimum_wallet_withdrawal_amount}</p>
                                         )}
                                     </div>
 

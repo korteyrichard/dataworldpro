@@ -12,6 +12,7 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use App\Services\MoolreSmsService;
 
 class DashboardController extends Controller
@@ -150,7 +151,7 @@ class DashboardController extends Controller
     public function addToWallet(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:1|max:50000',
         ]);
 
         $user = auth()->user();
@@ -165,6 +166,8 @@ class DashboardController extends Controller
             'user_id' => $user->id,
             'order_id' => null,
             'amount' => $request->amount,
+            'balance_before' => $user->wallet_balance,
+            'balance_after' => null,
             'status' => 'pending',
             'type' => 'topup',
             'description' => 'Wallet top-up of GHS ' . number_format($request->amount, 2) . ' (+ GHS ' . number_format($transactionFee, 2) . ' fee)',
@@ -206,6 +209,7 @@ class DashboardController extends Controller
 
     public function handleWalletCallback(Request $request)
     {
+        $request->validate(['reference' => 'required|string|max:100|alpha_dash']);
         $reference = $request->reference;
         
         $response = Http::withHeaders([
@@ -216,24 +220,34 @@ class DashboardController extends Controller
             $paymentData = $response->json('data');
             $metadata = $paymentData['metadata'];
             
-            $transaction = Transaction::find($metadata['transaction_id']);
-            $user = auth()->user();
-            
-            if ($transaction && $transaction->status === 'pending') {
-                // Get the actual amount from metadata (excluding transaction fee)
+            $credited = DB::transaction(function () use ($metadata) {
+                $transaction = Transaction::where('id', $metadata['transaction_id'])->lockForUpdate()->first();
+                
+                if (!$transaction || $transaction->status !== 'pending') {
+                    return false;
+                }
+
                 $actualAmount = isset($metadata['actual_amount']) ? $metadata['actual_amount'] : $transaction->amount;
-                
-                // Update wallet balance with the actual amount (not including fee)
-                $user->wallet_balance += $actualAmount;
-                $user->save();
-                
-                // Update transaction status
-                $transaction->update(['status' => 'completed']);
-                
-                // Send SMS notification
+
+                $user = \App\Models\User::where('id', $transaction->user_id)->lockForUpdate()->first();
+                $balanceBefore = $user->wallet_balance;
+
+                $transaction->update([
+                    'status' => 'completed',
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceBefore + $actualAmount,
+                ]);
+
+                $user->increment('wallet_balance', $actualAmount);
+
+                return ['user' => $user->fresh(), 'amount' => $actualAmount];
+            });
+
+            if ($credited) {
+                $user = $credited['user'];
                 if ($user->phone) {
                     $smsService = new MoolreSmsService();
-                    $message = "Your wallet has been topped up with GHS " . number_format($actualAmount, 2) . ". New balance: GHS " . number_format($user->wallet_balance, 2);
+                    $message = "Your wallet has been topped up with GHS " . number_format($credited['amount'], 2) . ". New balance: GHS " . number_format($user->wallet_balance, 2);
                     $smsService->sendSms($user->phone, $message);
                 }
             }

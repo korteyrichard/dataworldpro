@@ -2,6 +2,7 @@ import React from 'react';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '@/components/pagination';
 
 interface Commission {
     id: number;
@@ -15,10 +16,11 @@ interface Commission {
 
 interface CommissionsProps {
     auth: { user: any };
-    commissions: Commission[];
+    commissions: any;
 }
 
 export default function Commissions({ auth, commissions }: CommissionsProps) {
+    const commissionsData: Commission[] = commissions?.data || commissions || [];
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -48,7 +50,7 @@ export default function Commissions({ auth, commissions }: CommissionsProps) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {commissions.map((commission) => (
+                                {commissionsData.map((commission) => (
                                     <tr key={commission.id} className="border-b">
                                         <td className="p-2">#{commission.order_id}</td>
                                         <td className="p-2">{commission.product.name}</td>
@@ -65,6 +67,7 @@ export default function Commissions({ auth, commissions }: CommissionsProps) {
                             </tbody>
                         </table>
                     </div>
+                    {commissions?.links && <Pagination data={commissions} />}
                 </CardContent>
             </Card>
         </DashboardLayout>

@@ -44,6 +44,7 @@ interface UsersPageProps extends PageProps {
     customers: number;
     agents: number;
     admins: number;
+    dealers: number;
     totalWalletBalance: number;
   };
 }
@@ -80,7 +81,7 @@ const UsersPage = ({ auth, users, filterEmail, filterRole, userStats }: UsersPag
       }
     >
       {/* User Statistics */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total Users</h3>
@@ -119,6 +120,16 @@ const UsersPage = ({ auth, users, filterEmail, filterRole, userStats }: UsersPag
             </div>
           </div>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{userStats.admins}</p>
+        </div>
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Dealers</h3>
+            <div className="p-2 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
+              <UserCheck className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{userStats.dealers}</p>
         </div>
         
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700">
@@ -165,6 +176,7 @@ const UsersPage = ({ auth, users, filterEmail, filterRole, userStats }: UsersPag
               <option value="">All Roles</option>
               <option value="customer">Customer</option>
               <option value="agent">Agent</option>
+              <option value="dealer">Dealer</option>
               <option value="admin">Admin</option>
             </select>
           </div>

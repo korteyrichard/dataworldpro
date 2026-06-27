@@ -42,6 +42,9 @@ class AdminDashboardController extends Controller
             'easydataOrderPusherEnabled' => (bool) Setting::get('easydata_order_pusher_enabled', 1),
             'skanka5OrderPusherEnabled' => (bool) Setting::get('skanka5_order_pusher_enabled', 1),
             'skanka5TelecelOrderPusherEnabled' => (bool) Setting::get('skanka5_telecel_order_pusher_enabled', 1),
+            'codecraftMtnOrderPusherEnabled' => (bool) Setting::get('codecraft_mtn_order_pusher_enabled', 1),
+            'dataflowOrderPusherEnabled' => (bool) Setting::get('dataflow_order_pusher_enabled', 0),
+            'masterNetOrderPusherEnabled' => (bool) Setting::get('successbizhub_order_pusher_enabled', 0),
         ]);
     }
 
@@ -67,6 +70,7 @@ class AdminDashboardController extends Controller
         $customerCount = User::where('role', 'customer')->count();
         $agentCount = User::where('role', 'agent')->count();
         $adminCount = User::where('role', 'admin')->count();
+        $dealerCount = User::where('role', 'dealer')->count();
         $totalWalletBalance = User::sum('wallet_balance');
 
         return Inertia::render('Admin/Users', [
@@ -78,6 +82,7 @@ class AdminDashboardController extends Controller
                 'customers' => $customerCount,
                 'agents' => $agentCount,
                 'admins' => $adminCount,
+                'dealers' => $dealerCount,
                 'totalWalletBalance' => $totalWalletBalance,
             ],
         ]);
@@ -147,6 +152,12 @@ class AdminDashboardController extends Controller
             $orders->where('order_source', $request->input('order_source'));
         }
 
+        if ($request->has('email') && $request->input('email') !== '') {
+            $orders->whereHas('user', function($query) use ($request) {
+                $query->where('email', 'like', '%' . $request->input('email') . '%');
+            });
+        }
+
         $paginatedOrders = $orders->paginate(50)->appends($request->query());
         
         // Transform orders to include variant information and order source
@@ -174,6 +185,7 @@ class AdminDashboardController extends Controller
             'searchOrderId' => $request->input('order_id', ''),
             'searchBeneficiaryNumber' => $request->input('beneficiary_number', ''),
             'filterOrderSource' => $request->input('order_source', ''),
+            'searchEmail' => $request->input('email', ''),
             'dailyTotalSales' => $dailyTotalSales,
         ]);
     }
@@ -204,6 +216,7 @@ class AdminDashboardController extends Controller
             $user = $order->user;
             $refundAmount = $order->total;
             
+            $balanceBefore = $user->wallet_balance;
             // Add refund to user's wallet
             $user->increment('wallet_balance', $refundAmount);
             
@@ -212,6 +225,8 @@ class AdminDashboardController extends Controller
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'amount' => $refundAmount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceBefore + $refundAmount,
                 'status' => 'completed',
                 'type' => 'refund',
                 'description' => "Refund for cancelled order #{$order->id}",
@@ -268,6 +283,7 @@ class AdminDashboardController extends Controller
                     $user = $order->user;
                     $refundAmount = $order->total;
                     
+                    $balanceBefore = $user->wallet_balance;
                     // Add refund to user's wallet
                     $user->increment('wallet_balance', $refundAmount);
                     
@@ -276,6 +292,8 @@ class AdminDashboardController extends Controller
                         'user_id' => $user->id,
                         'order_id' => $order->id,
                         'amount' => $refundAmount,
+                        'balance_before' => $balanceBefore,
+                        'balance_after' => $balanceBefore + $refundAmount,
                         'status' => 'completed',
                         'type' => 'refund',
                         'description' => "Refund for cancelled order #{$order->id}",
@@ -338,7 +356,7 @@ class AdminDashboardController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|in:customer,agent,admin',
+            'role' => 'required|string|in:customer,agent,admin,dealer',
         ]);
 
         User::create([
@@ -357,7 +375,7 @@ class AdminDashboardController extends Controller
     public function updateUserRole(Request $request, User $user)
     {
         $request->validate([
-            'role' => 'required|string|in:customer,agent,admin',
+            'role' => 'required|string|in:customer,agent,admin,dealer',
         ]);
 
         $user->update([
@@ -389,6 +407,7 @@ class AdminDashboardController extends Controller
         $amount = $request->amount;
         
         DB::transaction(function () use ($user, $amount) {
+            $balanceBefore = $user->wallet_balance;
             // Update user wallet balance
             $user->increment('wallet_balance', $amount);
             
@@ -396,6 +415,8 @@ class AdminDashboardController extends Controller
             Transaction::create([
                 'user_id' => $user->id,
                 'amount' => $amount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceBefore + $amount,
                 'status' => 'completed',
                 'type' => 'admin_credit',
                 'description' => 'Wallet credited by admin',
@@ -426,6 +447,7 @@ class AdminDashboardController extends Controller
         $amount = $request->amount;
         
         DB::transaction(function () use ($user, $amount) {
+            $balanceBefore = $user->wallet_balance;
             // Update user wallet balance
             $user->decrement('wallet_balance', $amount);
             
@@ -433,6 +455,8 @@ class AdminDashboardController extends Controller
             Transaction::create([
                 'user_id' => $user->id,
                 'amount' => $amount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceBefore - $amount,
                 'status' => 'completed',
                 'type' => 'admin_debit',
                 'description' => 'Wallet debited by admin',
@@ -467,7 +491,7 @@ class AdminDashboardController extends Controller
                 'network' => 'required|in:MTN,Telecel,Ishare,Bigtime',
                 'description' => 'required|string|max:255',
                 'expiry' => 'required|in:non expiry,30 days,24 hours',
-                'product_type' => 'required|in:agent_product,customer_product',
+                'product_type' => 'required|in:agent_product,customer_product,dealer_product',
                 'variants' => 'required|array|min:1',
                 'variants.*.price' => 'required|numeric|min:0',
                 'variants.*.quantity' => 'required|string',
@@ -539,7 +563,7 @@ class AdminDashboardController extends Controller
             'network' => 'required|in:MTN,Telecel,Ishare,Bigtime',
             'description' => 'required|string|max:255',
             'expiry' => 'required|in:non expiry,30 days,24 hours',
-            'product_type' => 'required|in:agent_product,customer_product',
+            'product_type' => 'required|in:agent_product,customer_product,dealer_product',
             'variants' => 'required|array|min:1',
             'variants.*.price' => 'required|numeric|min:0',
             'variants.*.quantity' => 'required|string',
@@ -598,6 +622,20 @@ class AdminDashboardController extends Controller
     }
 
     /**
+     * Update stock status for all variants of a product.
+     */
+    public function updateProductStock(Request $request, Product $product)
+    {
+        $request->validate([
+            'status' => 'required|in:IN STOCK,OUT OF STOCK',
+        ]);
+
+        $product->variants()->update(['status' => $request->status]);
+
+        return redirect()->back()->with('success', "All variants set to {$request->status}.");
+    }
+
+    /**
      * Delete a product.
      */
     public function deleteProduct(Product $product)
@@ -609,12 +647,17 @@ class AdminDashboardController extends Controller
     /**
      * Display user transaction history.
      */
-    public function userTransactions(User $user)
+    public function userTransactions(Request $request, User $user)
     {
-        $transactions = Transaction::where('user_id', $user->id)
+        $query = Transaction::where('user_id', $user->id)
             ->with('order')
-            ->latest()
-            ->get();
+            ->latest();
+
+        if ($request->filled('type') && $request->type !== 'all') {
+            $query->where('type', $request->type);
+        }
+
+        $transactions = $query->paginate(20)->appends($request->query());
 
         // Calculate topup statistics
         $totalTopupAmount = Transaction::where('user_id', $user->id)
@@ -639,28 +682,16 @@ class AdminDashboardController extends Controller
             ->whereDate('created_at', today())
             ->sum('total');
         
-        // Calculate average daily sales based on days since first order
-        $firstOrderDate = Order::where('user_id', $user->id)
-            ->orderBy('created_at', 'asc')
-            ->value('created_at');
-        
-        $averageDailySales = 0;
-        if ($firstOrderDate) {
-            $daysSinceFirstOrder = now()->diffInDays($firstOrderDate) + 1; // +1 to include today
-            $averageDailySales = $totalSales / $daysSinceFirstOrder;
-        }
-
         return Inertia::render('Admin/UserTransactions', [
             'user' => $user,
             'transactions' => $transactions,
+            'filters' => $request->only(['type']),
             'stats' => [
-                'totalTopupAmount' => $totalTopupAmount,
                 'completedTopupAmount' => $completedTopupAmount,
                 'todaysTopup' => $todaysTopup,
                 'totalOrders' => $totalOrders,
                 'totalSales' => $totalSales,
                 'todaysSales' => $todaysSales,
-                'averageDailySales' => $averageDailySales,
             ],
         ]);
     }
@@ -822,6 +853,42 @@ class AdminDashboardController extends Controller
         
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "Skanka5 Telecel order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle CodeCraft MTN order pusher functionality.
+     */
+    public function toggleCodecraftMtnOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('codecraft_mtn_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "CodeCraft MTN order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle Dataflow order pusher functionality.
+     */
+    public function toggleDataflowOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('dataflow_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Dataflow order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle MasterNet DataHub order pusher functionality.
+     */
+    public function toggleSuccessBizHubOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('successbizhub_order_pusher_enabled', $enabled ? '1' : '0');
+        
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "MasterNet DataHub order pusher {$status} successfully.");
     }
 
     /**

@@ -101,6 +101,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('products', [\App\Http\Controllers\AdminDashboardController::class, 'products'])->name('products');
     Route::post('products', [\App\Http\Controllers\AdminDashboardController::class, 'storeProduct'])->name('products.store');
     Route::put('products/{product}', [\App\Http\Controllers\AdminDashboardController::class, 'updateProduct'])->name('products.update');
+    Route::put('products/{product}/stock', [\App\Http\Controllers\AdminDashboardController::class, 'updateProductStock'])->name('products.updateStock');
     Route::delete('products/{product}', [\App\Http\Controllers\AdminDashboardController::class, 'deleteProduct'])->name('products.delete');
     Route::get('variations', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'index'])->name('variations');
     Route::post('variation-attributes', [\App\Http\Controllers\Admin\VariationAttributeController::class, 'store'])->name('variation-attributes.store');
@@ -125,6 +126,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('toggle-easydata-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleEasydataOrderPusher'])->name('toggle.easydata.order.pusher');
     Route::post('toggle-skanka5-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSkanka5OrderPusher'])->name('toggle.skanka5.order.pusher');
     Route::post('toggle-skanka5-telecel-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSkanka5TelecelOrderPusher'])->name('toggle.skanka5.telecel.order.pusher');
+    Route::post('toggle-codecraft-mtn-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftMtnOrderPusher'])->name('toggle.codecraft.mtn.order.pusher');
+    Route::post('toggle-dataflow-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleDataflowOrderPusher'])->name('toggle.dataflow.order.pusher');
+    Route::post('toggle-successbizhub-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSuccessBizHubOrderPusher'])->name('toggle.successbizhub.order.pusher');
     
     // Alert routes
     Route::resource('alerts', \App\Http\Controllers\Admin\AlertController::class);

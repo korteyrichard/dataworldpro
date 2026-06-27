@@ -21,6 +21,11 @@ class RoleMiddleware
         if ($role === 'agent') {
             return $next($request);
         }
+
+        // Allow dealer role access to dealer routes
+        if ($role === 'dealer' && $request->user()->role === 'dealer') {
+            return $next($request);
+        }
         
         // Standard role check for other routes (admin, etc.)
         if ($request->user()->role !== $role) {

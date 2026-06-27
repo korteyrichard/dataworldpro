@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePage } from '@inertiajs/react';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { router } from '@inertiajs/react';
 import { useToast } from '@/components/ui/use-toast';
+import Pagination from '@/components/pagination';
 
 interface Withdrawal {
     id: number;
@@ -31,18 +33,19 @@ interface Withdrawal {
 
 interface AdminWithdrawalsProps {
     auth: { user: any };
-    withdrawals: {
-        data: Withdrawal[];
-        current_page: number;
-        last_page: number;
-        per_page: number;
-        total: number;
-    };
+    withdrawals: any;
+    filters?: { search?: string };
 }
 
-export default function AdminWithdrawals({ auth, withdrawals }: AdminWithdrawalsProps) {
+export default function AdminWithdrawals({ auth, withdrawals, filters }: AdminWithdrawalsProps) {
     const { toast } = useToast();
     const { flash } = usePage().props as any;
+    const [search, setSearch] = useState(filters?.search || '');
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.get(route('admin.withdrawals'), { search: search || undefined }, { preserveState: true });
+    };
 
     // Handle flash messages
     useEffect(() => {
@@ -87,6 +90,26 @@ export default function AdminWithdrawals({ auth, withdrawals }: AdminWithdrawals
                     <p className="text-sm text-gray-600">
                         Showing {withdrawalsData.length} of {withdrawals?.total || 0} shop withdrawals
                     </p>
+                    <form onSubmit={handleSearch} className="flex gap-2 mt-2">
+                        <Input
+                            placeholder="Search by email..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="max-w-xs"
+                        />
+                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                            Search
+                        </button>
+                        {filters?.search && (
+                            <button
+                                type="button"
+                                onClick={() => { setSearch(''); router.get(route('admin.withdrawals')); }}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </form>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto">
@@ -179,6 +202,7 @@ export default function AdminWithdrawals({ auth, withdrawals }: AdminWithdrawals
                             </tbody>
                         </table>
                     </div>
+                    {withdrawals?.links && <Pagination data={withdrawals} />}
                 </CardContent>
             </Card>
         </AdminLayout>

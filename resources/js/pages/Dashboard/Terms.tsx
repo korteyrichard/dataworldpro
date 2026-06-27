@@ -27,8 +27,7 @@ export default function ApiDocs({ auth }: Props) {
                 <div className="mb-6">
                     <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">Working Hours</h2>
                     <ul className="space-y-1 pl-6 text-gray-700 dark:text-gray-300">
-                        <li>Monday - Saturday: 7:30am - 8:30pm</li>
-                        <li>Sunday: 8am - 9pm</li>
+                        <li>24/7 Delivery - Available all day, every day</li>
                     </ul>
                 </div>
 

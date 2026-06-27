@@ -16,7 +16,7 @@ interface Product {
   name: string;
   description?: string;
   network: string;
-  product_type: 'agent_product' | 'customer_product';
+  product_type: 'agent_product' | 'customer_product' | 'dealer_product';
   expiry: string;
   has_variants: boolean;
   variants: ProductVariant[];
@@ -44,7 +44,7 @@ export default function AdminProducts({
     description: '',
     expiry: '',
     network: '',
-    product_type: 'customer_product' as 'agent_product' | 'customer_product',
+    product_type: 'customer_product' as 'agent_product' | 'customer_product' | 'dealer_product',
     has_variants: false,
     variants: [] as Array<{price: number; quantity: string; status: string}>,
   });
@@ -158,6 +158,12 @@ const submitEditProduct = (e: React.FormEvent) => {
     }
   };
 
+  const handleToggleProductStock = (product: Product, status: 'IN STOCK' | 'OUT OF STOCK') => {
+    router.put(route('admin.products.updateStock', product.id), { status }, {
+      onSuccess: () => router.reload({ only: ['products'] }),
+    });
+  };
+
   return (
     <AdminLayout
       user={auth.user}
@@ -212,9 +218,9 @@ const submitEditProduct = (e: React.FormEvent) => {
                       <td className="px-2 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">{product.network}</td>
                       <td className="px-2 sm:px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          product.product_type === 'agent_product' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                          product.product_type === 'agent_product' ? 'bg-purple-100 text-purple-800' : product.product_type === 'dealer_product' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {product.product_type === 'agent_product' ? 'Agent' : 'Customer'}
+                          {product.product_type === 'agent_product' ? 'Agent' : product.product_type === 'dealer_product' ? 'Dealer' : 'Customer'}
                         </span>
                       </td>
                       <td className="px-2 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
@@ -225,7 +231,22 @@ const submitEditProduct = (e: React.FormEvent) => {
                           <div className="text-xs text-gray-500 mt-1">${product.price_range}</div>
                         )}
                       </td>
-                      <td className="px-2 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      <td className="px-2 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap space-x-2">
+                        {product.variants.every(v => v.status === 'IN STOCK') ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleToggleProductStock(product, 'OUT OF STOCK'); }}
+                            className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                          >
+                            Set Out of Stock
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleToggleProductStock(product, 'IN STOCK'); }}
+                            className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
+                          >
+                            Set In Stock
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -402,11 +423,12 @@ const submitEditProduct = (e: React.FormEvent) => {
                 <select
                   id="product_type"
                   value={data.product_type}
-                  onChange={(e) => setData('product_type', e.target.value as 'agent_product' | 'customer_product')}
+                  onChange={(e) => setData('product_type', e.target.value as 'agent_product' | 'customer_product' | 'dealer_product')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="customer_product">Customer Product</option>
                   <option value="agent_product">Agent Product</option>
+                  <option value="dealer_product">Dealer Product</option>
                 </select>
                 {errors.product_type && <p className="text-red-500 text-xs mt-1">{errors.product_type}</p>}
               </div>
@@ -583,11 +605,12 @@ const submitEditProduct = (e: React.FormEvent) => {
                 <select
                   id="edit-product_type"
                   value={data.product_type}
-                  onChange={(e) => setData('product_type', e.target.value as 'agent_product' | 'customer_product')}
+                  onChange={(e) => setData('product_type', e.target.value as 'agent_product' | 'customer_product' | 'dealer_product')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="customer_product">Customer Product</option>
                   <option value="agent_product">Agent Product</option>
+                  <option value="dealer_product">Dealer Product</option>
                 </select>
                 {errors.product_type && <p className="text-red-500 text-xs mt-1">{errors.product_type}</p>}
               </div>

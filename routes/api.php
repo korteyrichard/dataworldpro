@@ -6,9 +6,11 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AFAController;
+use App\Http\Controllers\Api\InboundWebhookController;
 
 use App\Http\Controllers\Api\TransactionController;
 use App\Models\User;
+use App\Models\Webhook;
 
 Route::prefix('v1')->group(function () {
 
@@ -178,6 +180,29 @@ Route::prefix('v1')->group(function () {
         // Legacy endpoint
         Route::get('/transaction-status', [TransactionController::class, 'index']);
 
+        // WEBHOOKS
+        Route::post('/webhooks', function (Request $request) {
+            $request->validate([
+                'url' => 'required|url',
+            ]);
+
+            $webhook = $request->user()->webhooks()->create([
+                'url' => $request->url,
+                'secret' => bin2hex(random_bytes(16)),
+            ]);
+
+            return response()->json(['webhook' => $webhook], 201);
+        });
+
+        Route::get('/webhooks', function (Request $request) {
+            return response()->json(['webhooks' => $request->user()->webhooks]);
+        });
+
+        Route::delete('/webhooks/{id}', function (Request $request, $id) {
+            $request->user()->webhooks()->where('id', $id)->delete();
+            return response()->json(['message' => 'Webhook deleted']);
+        });
+
         // Logout route - revoke current token
         Route::post('/logout', function (Request $request) {
             $request->user()->currentAccessToken()->delete();
@@ -202,4 +227,12 @@ Route::prefix('v1')->group(function () {
         });
     });
     
+});
+
+
+// Inbound Webhooks (public - no auth, verified by secret)
+Route::prefix('webhook')->group(function () {
+    Route::post('/masternetdatahub', [InboundWebhookController::class, 'masternetdatahub']);
+    Route::post('/jessco', [InboundWebhookController::class, 'jessco']);
+    Route::post('/skanka5', [InboundWebhookController::class, 'skanka5']);
 });

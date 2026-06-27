@@ -68,6 +68,7 @@ interface AdminOrdersPageProps {
   filterOrderSource: string;
   searchOrderId: string;
   searchBeneficiaryNumber: string;
+  searchEmail: string;
   dailyTotalSales: number;
   [key: string]: any;
 }
@@ -82,6 +83,7 @@ export default function AdminOrders() {
     filterOrderSource: initialOrderSourceFilter,
     searchOrderId: initialSearchOrderId,
     searchBeneficiaryNumber: initialSearchBeneficiaryNumber,
+    searchEmail: initialSearchEmail,
     dailyTotalSales,
   } = usePage<AdminOrdersPageProps>().props;
 
@@ -91,6 +93,7 @@ export default function AdminOrders() {
   const [orderPusherStatusFilter, setOrderPusherStatusFilter] = useState(initialOrderPusherStatusFilter || '');
   const [searchOrderId, setSearchOrderId] = useState(initialSearchOrderId || '');
   const [searchBeneficiaryNumber, setSearchBeneficiaryNumber] = useState(initialSearchBeneficiaryNumber || '');
+  const [searchEmail, setSearchEmail] = useState(initialSearchEmail || '');
   const [orderSourceFilter, setOrderSourceFilter] = useState(initialOrderSourceFilter || '');
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState('');
@@ -131,18 +134,22 @@ export default function AdminOrders() {
     router.get(route('admin.orders'), params, { preserveState: true, replace: true });
   };
 
-  const handleSearch = (searchType: 'order_id' | 'beneficiary_number', value: string) => {
+  const handleSearch = (searchType: 'order_id' | 'beneficiary_number' | 'email', value: string) => {
     const searchParams: any = {};
     if (searchType === 'order_id' && value) {
       searchParams.order_id = value;
     } else if (searchType === 'beneficiary_number' && value) {
       searchParams.beneficiary_number = value;
+    } else if (searchType === 'email' && value) {
+      searchParams.email = value;
     }
     
     if (searchType === 'order_id') {
       setSearchOrderId(value);
-    } else {
+    } else if (searchType === 'beneficiary_number') {
       setSearchBeneficiaryNumber(value);
+    } else {
+      setSearchEmail(value);
     }
     
     router.get(route('admin.orders'), searchParams, { preserveState: true, replace: true });
@@ -293,7 +300,7 @@ export default function AdminOrders() {
         )}
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-8">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Network</label>
             <select
@@ -362,13 +369,24 @@ export default function AdminOrders() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Search by Beneficiary Number</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Search by Number</label>
             <input
               type="text"
               placeholder="Enter phone number"
               className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
               value={searchBeneficiaryNumber}
               onChange={(e) => handleSearch('beneficiary_number', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Search by Email</label>
+            <input
+              type="text"
+              placeholder="Enter email"
+              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
+              value={searchEmail}
+              onChange={(e) => handleSearch('email', e.target.value)}
             />
           </div>
         </div>
@@ -418,10 +436,7 @@ export default function AdminOrders() {
                         <div className="text-sm">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">
-                              {order.order_source === 'shop' ? 
-                                (order.buyer_email ? order.buyer_email.split('@')[0] : 'Guest Customer') : 
-                                (order.user?.name || 'Unknown User')
-                              }
+                              {order.user?.name || 'Unknown User'}
                             </span>
                             {order.order_source === 'shop' && (
                               <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
@@ -445,10 +460,7 @@ export default function AdminOrders() {
                             )}
                           </div>
                           <div className="text-gray-500 text-xs">
-                            {order.order_source === 'shop' ? 
-                              (order.buyer_email || 'No email') : 
-                              (order.user?.email || 'No email')
-                            }
+                            {order.user?.email || 'No email'}
                           </div>
                         </div>
                       </td>

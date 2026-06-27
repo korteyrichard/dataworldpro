@@ -15,6 +15,8 @@ interface Order {
 interface Transaction {
   id: number;
   amount: number;
+  balance_before: number | null;
+  balance_after: number | null;
   status: string;
   description: string;
   created_at: string;
@@ -103,6 +105,8 @@ export default function AdminTransactions() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bal Before</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bal After</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -114,6 +118,8 @@ export default function AdminTransactions() {
                     <td className="px-4 py-3 font-bold">{transaction.id}</td>
                     <td className="px-4 py-3 text-sm">{transaction.user?.name || transaction.order?.user?.name}</td>
                     <td className="px-4 py-3 text-sm">${transaction.amount}</td>
+                    <td className="px-4 py-3 text-sm">{transaction.balance_before != null ? `$${Number(transaction.balance_before).toFixed(2)}` : '-'}</td>
+                    <td className="px-4 py-3 text-sm">{transaction.balance_after != null ? `$${Number(transaction.balance_after).toFixed(2)}` : '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${typeColors[transaction.type] || 'bg-gray-100 text-gray-800'}`}>
                         {typeLabels[transaction.type] || transaction.type.replace('_', ' ').toUpperCase()}

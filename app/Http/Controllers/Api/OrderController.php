@@ -15,6 +15,9 @@ use App\Services\JescoOrderPusherService;
 use App\Services\EasyDataOrderPusherService;
 use App\Services\Skanka5OrderPusherService;
 use App\Services\Skanka5OrderPusherTelecelService;
+use App\Services\CodeCraftMtnOrderPusherService;
+use App\Services\DataflowOrderPusherService;
+use App\Services\MasterNetOrderPusherService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
 
@@ -60,53 +63,60 @@ class OrderController extends Controller
             return response()->json(['error' => 'Product variant is out of stock'], 400);
         }
 
-        if (auth()->user()->wallet_balance < $variant->price) {
-            return response()->json(['error' => 'Insufficient wallet balance'], 400);
+        try {
+            $order = DB::transaction(function() use ($request, $product, $variant) {
+                // Lock user row to prevent concurrent overdraw
+                $lockedUser = \App\Models\User::where('id', auth()->id())->lockForUpdate()->first();
+
+                if ($lockedUser->wallet_balance < $variant->price) {
+                    throw new \Exception('Insufficient wallet balance');
+                }
+
+                // Check for existing orders with lock to prevent duplicate orders
+                $existingOrder = Order::where('beneficiary_number', $request->beneficiary_number)
+                    ->whereIn('status', ['processing', 'pending'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existingOrder) {
+                    throw new \Exception('An order is already being processed for this beneficiary number. Please wait for it to complete before placing a new order.');
+                }
+
+                $balanceBefore = $lockedUser->wallet_balance;
+                $lockedUser->decrement('wallet_balance', $variant->price);
+
+                $order = Order::create([
+                    'user_id' => $lockedUser->id,
+                    'total' => $variant->price,
+                    'beneficiary_number' => $request->beneficiary_number,
+                    'network' => $product->network,
+                    'status' => 'pending',
+                    'order_source' => 'api'
+                ]);
+
+                $order->products()->attach($product->id, [
+                    'quantity' => 1,
+                    'price' => $variant->price,
+                    'beneficiary_number' => $request->beneficiary_number,
+                    'product_variant_id' => $variant->id
+                ]);
+
+                \App\Models\Transaction::create([
+                    'user_id' => $lockedUser->id,
+                    'order_id' => $order->id,
+                    'amount' => $variant->price,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $lockedUser->wallet_balance,
+                    'status' => 'completed',
+                    'type' => 'order',
+                    'description' => 'API order placed for ' . $product->network . ' data/airtime.',
+                ]);
+
+                return $order;
+            });
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
         }
-
-        // Check for existing orders with processing or pending status for the same beneficiary number
-        $existingOrder = Order::where('beneficiary_number', $request->beneficiary_number)
-            ->whereIn('status', ['processing', 'pending'])
-            ->first();
-            
-        if ($existingOrder) {
-            return response()->json(['error' => 'An order is already being processed for this beneficiary number. Please wait for it to complete before placing a new order.'], 400);
-        }
-
-        $order = DB::transaction(function() use ($request, $product, $variant) {
-            auth()->user()->decrement('wallet_balance', $variant->price);
-            
-            // Note: quantity field stores data size (e.g., "1GB"), not stock count
-            // Stock is managed via status field
-            
-            $order = Order::create([
-                'user_id' => auth()->id(),
-                'total' => $variant->price,
-                'beneficiary_number' => $request->beneficiary_number,
-                'network' => $product->network,
-                'status' => 'pending',
-                'order_source' => 'api'
-            ]);
-
-            $order->products()->attach($product->id, [
-                'quantity' => 1,
-                'price' => $variant->price,
-                'beneficiary_number' => $request->beneficiary_number,
-                'product_variant_id' => $variant->id
-            ]);
-
-            // Create transaction record for sales tracking
-            \App\Models\Transaction::create([
-                'user_id' => auth()->id(),
-                'order_id' => $order->id,
-                'amount' => $variant->price,
-                'status' => 'completed',
-                'type' => 'order',
-                'description' => 'API order placed for ' . $product->network . ' data/airtime.',
-            ]);
-
-            return $order;
-        });
         
         // Push order to external API based on network (if enabled)
         try {
@@ -126,6 +136,18 @@ class OrderController extends Controller
                 if (Setting::get('skanka5_order_pusher_enabled', 1)) {
                     $skanka5OrderPusher = new Skanka5OrderPusherService();
                     $skanka5OrderPusher->pushOrderToApi($order);
+                }
+                if (Setting::get('codecraft_mtn_order_pusher_enabled', 1)) {
+                    $codeCraftMtnOrderPusher = new CodeCraftMtnOrderPusherService();
+                    $codeCraftMtnOrderPusher->pushOrderToApi($order);
+                }
+                if (Setting::get('dataflow_order_pusher_enabled', 0)) {
+                    $dataflowOrderPusher = new DataflowOrderPusherService();
+                    $dataflowOrderPusher->pushOrderToApi($order);
+                }
+                if (Setting::get('successbizhub_order_pusher_enabled', 0)) {
+                    $masterNetOrderPusher = new MasterNetOrderPusherService();
+                    $masterNetOrderPusher->pushOrderToApi($order);
                 }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
                 if (Setting::get('codecraft_order_pusher_enabled', 1)) {
