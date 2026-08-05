@@ -347,71 +347,44 @@ class AgentController extends Controller
         // Get available products based on user role
         $availableProducts = collect();
         
-        if ($user->role === 'agent') {
-            // Agents see only products with product_type = 'agent_product' and variants that are in stock
-            $availableProducts = \App\Models\Product::with(['variants' => function($query) {
-                    $query->where('status', 'IN STOCK');
-                }])
-                ->where('product_type', 'agent_product')
-                ->get()
-                ->filter(function($product) {
-                    return $product->variants->count() > 0; // Only include products with in-stock variants
-                })
-                ->map(function($product) {
-                    return [
-                        'id' => $product->id,
-                        'name' => $product->name,
-                        'product_type' => $product->product_type,
-                        'network' => $product->network,
-                        'variants' => $product->variants->map(function($variant) {
-                            return [
-                                'id' => $variant->id,
-                                'name' => $variant->getVariantNameAttribute(),
-                                'price' => $variant->price
-                            ];
-                        })
-                    ];
-                });
-        } elseif ($user->role === 'admin') {
-            // Admin sees all products with all variants (including out of stock)
+        $productTypeMap = [
+            'admin'  => null,
+            'dealer' => 'dealer_product',
+            'agent'  => 'agent_product',
+            'customer'=> 'customer_product',
+        ];
+        $productType = $productTypeMap[$user->role] ?? 'agent_product';
+
+        if ($user->role === 'admin') {
             $availableProducts = \App\Models\Product::with('variants')->get()->map(function($product) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
                     'product_type' => $product->product_type,
                     'network' => $product->network,
-                    'variants' => $product->variants->map(function($variant) {
-                        return [
-                            'id' => $variant->id,
-                            'name' => $variant->getVariantNameAttribute(),
-                            'price' => $variant->price
-                        ];
-                    })
+                    'variants' => $product->variants->map(fn($v) => [
+                        'id' => $v->id,
+                        'name' => $v->getVariantNameAttribute(),
+                        'price' => $v->price
+                    ])
                 ];
             });
         } else {
-            // Customers see customer products with only in-stock variants
-            $availableProducts = \App\Models\Product::with(['variants' => function($query) {
-                    $query->where('status', 'IN STOCK');
-                }])
-                ->where('product_type', 'customer_product')
+            $availableProducts = \App\Models\Product::with(['variants' => fn($q) => $q->where('status', 'IN STOCK')])
+                ->where('product_type', $productType)
                 ->get()
-                ->filter(function($product) {
-                    return $product->variants->count() > 0; // Only include products with in-stock variants
-                })
+                ->filter(fn($product) => $product->variants->count() > 0)
                 ->map(function($product) {
                     return [
                         'id' => $product->id,
                         'name' => $product->name,
                         'product_type' => $product->product_type,
                         'network' => $product->network,
-                        'variants' => $product->variants->map(function($variant) {
-                            return [
-                                'id' => $variant->id,
-                                'name' => $variant->getVariantNameAttribute(),
-                                'price' => $variant->price
-                            ];
-                        })
+                        'variants' => $product->variants->map(fn($v) => [
+                            'id' => $v->id,
+                            'name' => $v->getVariantNameAttribute(),
+                            'price' => $v->price
+                        ])
                     ];
                 });
         }

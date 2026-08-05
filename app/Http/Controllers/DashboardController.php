@@ -267,7 +267,13 @@ class DashboardController extends Controller
         $user = auth()->user();
         
         // Determine product type based on user role
-        $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+        $productTypeMap = [
+            'customer' => 'customer_product',
+            'agent'    => 'agent_product',
+            'dealer'   => 'dealer_product',
+            'admin'    => 'agent_product',
+        ];
+        $productType = $productTypeMap[$user->role] ?? 'agent_product';
         
         $product = Product::where('network', $network)
             ->where('product_type', $productType)

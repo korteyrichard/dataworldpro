@@ -6,6 +6,9 @@ use App\Models\Cart;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Order;
+use App\Models\VerifiedNumber;
+use App\Models\UnverifiedNumber;
+use App\Services\PreviousOrderRestrictionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +19,26 @@ class CartController extends Controller
     {
         $user = Auth::user();
         
+        // MTN-only restrictions
+        if ($request->has('beneficiary_number') && strtolower($request->network ?? '') === 'mtn') {
+            if (!VerifiedNumber::isAllowed($request->beneficiary_number)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'verified_number', 'cart');
+                $errorMessage = 'The number ' . $request->beneficiary_number . ' is not currently verified to receive orders. It has been added to the verification list and will be verified.';
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 403);
+                }
+                return redirect()->back()->withErrors(['error' => $errorMessage]);
+            }
+            if (!PreviousOrderRestrictionService::isAllowed($request->beneficiary_number, $request->network)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'previous_order', 'cart');
+                $errorMessage = 'The number ' . $request->beneficiary_number . ' has not placed an order before and cannot receive orders at this time. It has been added to the verification list and will be verified.';
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 403);
+                }
+                return redirect()->back()->withErrors(['error' => $errorMessage]);
+            }
+        }
+
         // Handle new single order format
         if ($request->has('network')) {
             $request->validate([
@@ -25,7 +48,8 @@ class CartController extends Controller
             ]);
             
             // Determine product type based on user role
-            $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+            $productTypeMap = ['customer' => 'customer_product', 'dealer' => 'dealer_product'];
+            $productType = $productTypeMap[$user->role] ?? 'agent_product';
             
             // Find the product by network and product type
             $product = Product::where('network', $request->network)
@@ -223,7 +247,8 @@ class CartController extends Controller
             $user = Auth::user();
             
             // Determine product type based on user role
-            $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+            $productTypeMap = ['customer' => 'customer_product', 'dealer' => 'dealer_product'];
+            $productType = $productTypeMap[$user->role] ?? 'agent_product';
             
             // Find the product by network and product type
             $product = Product::where('network', $request->network)
@@ -264,6 +289,20 @@ class CartController extends Controller
                     
                     // Validate phone number format
                     if (preg_match('/^\d{10}$/', $phoneNumber)) {
+                        // MTN-only restrictions
+                        if (strtolower($request->network) === 'mtn') {
+                            if (!VerifiedNumber::isAllowed($phoneNumber)) {
+                                UnverifiedNumber::log($phoneNumber, 'verified_number', 'cart');
+                                Log::info('Skipping due to verified number restriction: ' . $phoneNumber);
+                                continue;
+                            }
+                            if (!PreviousOrderRestrictionService::isAllowed($phoneNumber, $request->network)) {
+                                UnverifiedNumber::log($phoneNumber, 'previous_order', 'cart');
+                                Log::info('Skipping due to previous order restriction: ' . $phoneNumber);
+                                continue;
+                            }
+                        }
+
                         // Check for existing orders with same beneficiary number
                         $existingOrder = Order::where('beneficiary_number', $phoneNumber)
                             ->whereIn('status', ['pending', 'processing'])
@@ -283,8 +322,7 @@ class CartController extends Controller
                             Log::info('Skipping due to existing cart item: ' . $phoneNumber);
                             continue;
                         }
-                        
-                        // Find the variant by size - handle both cases and avoid double GB
+
                         $bundleSize = trim($bundleSize);
                         if (strtoupper(substr($bundleSize, -2)) === 'GB') {
                             $sizeKey = $bundleSize; // Already has GB
@@ -364,7 +402,8 @@ class CartController extends Controller
             Log::info('User authenticated', ['user_id' => $user->id, 'role' => $user->role]);
             
             // Determine product type based on user role
-            $productType = $user->isCustomer() ? 'customer_product' : 'agent_product';
+            $productTypeMap = ['customer' => 'customer_product', 'dealer' => 'dealer_product'];
+            $productType = $productTypeMap[$user->role] ?? 'agent_product';
             Log::info('Product type determined', ['product_type' => $productType]);
             
             // Find the product by network and product type
@@ -409,6 +448,20 @@ class CartController extends Controller
                     Log::info('Validating phone number', ['phone' => $phoneNumber, 'length' => strlen($phoneNumber)]);
                     if (preg_match('/^\d{10}$/', $phoneNumber)) {
                         Log::info('Phone number validation passed', ['phone' => $phoneNumber]);
+
+                        // MTN-only restrictions
+                        if (strtolower($request->network) === 'mtn') {
+                            if (!VerifiedNumber::isAllowed($phoneNumber)) {
+                                UnverifiedNumber::log($phoneNumber, 'verified_number', 'cart');
+                                Log::info('Skipping due to verified number restriction', ['phone' => $phoneNumber]);
+                                continue;
+                            }
+                            if (!PreviousOrderRestrictionService::isAllowed($phoneNumber, $request->network)) {
+                                UnverifiedNumber::log($phoneNumber, 'previous_order', 'cart');
+                                Log::info('Skipping due to previous order restriction', ['phone' => $phoneNumber]);
+                                continue;
+                            }
+                        }
                         
                         // Check for existing orders with same beneficiary number
                         $existingOrder = Order::where('beneficiary_number', $phoneNumber)

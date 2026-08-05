@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '../../layouts/admin-layout';
 import { Head, usePage, router } from '@inertiajs/react';
 
@@ -32,12 +32,23 @@ interface AFAOrder {
 interface AFAOrdersPageProps {
   afaOrders: AFAOrder[];
   auth: any;
+  filters: { search: string };
 }
 
 export default function AFAOrders() {
-  const { afaOrders, auth } = usePage<AFAOrdersPageProps>().props;
+  const { afaOrders, auth, filters } = usePage<AFAOrdersPageProps>().props;
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<number | null>(null);
+  const [search, setSearch] = useState(filters?.search || '');
+
+  useEffect(() => {
+    setSearch(filters?.search || '');
+  }, [filters?.search]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.get('/admin/afa-orders', search ? { search } : {}, { preserveScroll: false, replace: true });
+  };
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     setUpdatingStatus(orderId);
@@ -72,6 +83,30 @@ export default function AFAOrders() {
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Manage all AFA registration orders
             </p>
+            <form onSubmit={handleSearch} className="mt-4 flex gap-2">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by phone..."
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 w-64"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+              >
+                Search
+              </button>
+              {filters?.search && (
+                <button
+                  type="button"
+                  onClick={() => { setSearch(''); router.get('/admin/afa-orders', {}, { replace: true }); }}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-md hover:bg-gray-300"
+                >
+                  Clear
+                </button>
+              )}
+            </form>
           </div>
 
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">

@@ -140,6 +140,14 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('withdrawals/{withdrawal}/process', [AdminController::class, 'processWithdrawal'])->name('withdrawals.process');
     Route::get('settings', [AdminController::class, 'settings'])->name('settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+    Route::post('toggle-number-restriction', [AdminController::class, 'toggleNumberRestriction'])->name('toggle.number.restriction');
+    Route::post('toggle-previous-order-restriction', [AdminController::class, 'togglePreviousOrderRestriction'])->name('toggle.previous.order.restriction');
+    Route::post('verified-numbers', [AdminController::class, 'addVerifiedNumber'])->name('verified-numbers.store');
+    Route::post('verified-numbers/import', [AdminController::class, 'importVerifiedNumbers'])->name('verified-numbers.import');
+    Route::get('verified-numbers/download', [AdminController::class, 'downloadVerifiedNumbers'])->name('verified-numbers.download');
+    Route::get('unverified-numbers/download', [AdminController::class, 'downloadUnverifiedNumbers'])->name('unverified-numbers.download');
+    Route::delete('verified-numbers/{verifiedNumber}', [AdminController::class, 'removeVerifiedNumber'])->name('verified-numbers.destroy');
+    Route::get('order-beneficiaries/download', [AdminController::class, 'downloadOrderBeneficiaries'])->name('order-beneficiaries.download');
 });
 
 // Paystack payment routes

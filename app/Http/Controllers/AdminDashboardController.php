@@ -753,19 +753,21 @@ class AdminDashboardController extends Controller
     /**
      * Display AFA orders page.
      */
-    public function afaOrders()
+    public function afaOrders(Request $request)
     {
-        $afaOrders = \App\Models\AFAOrders::with(['afaproduct', 'user'])
-            ->latest()
-            ->get()
-            ->filter(function($order) {
-                // Filter out orders with null relationships to prevent frontend errors
-                return $order->user !== null && $order->afaproduct !== null;
-            })
-            ->values(); // Reset array keys
+        $query = \App\Models\AFAOrders::with(['afaproduct', 'user'])->latest();
+
+        if ($request->filled('search')) {
+            $query->where('phone', 'like', '%' . $request->search . '%');
+        }
+
+        $afaOrders = $query->get()
+            ->filter(fn($order) => $order->user !== null && $order->afaproduct !== null)
+            ->values();
         
         return Inertia::render('Admin/AFAOrders', [
-            'afaOrders' => $afaOrders
+            'afaOrders' => $afaOrders,
+            'filters' => ['search' => $request->search],
         ]);
     }
 

@@ -19,6 +19,8 @@ use App\Services\CodeCraftMtnOrderPusherService;
 use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Models\Setting;
+use App\Models\VerifiedNumber;
+use App\Models\UnverifiedNumber;
 
 class OrdersController extends Controller
 {
@@ -94,6 +96,35 @@ class OrdersController extends Controller
             return redirect()->back()->with('error', 'Cart is empty');
         }
 
+        // Check number restriction for each cart item (MTN only)
+        if (VerifiedNumber::isRestrictionEnabled()) {
+            foreach ($cartItems as $item) {
+                $itemNetwork = strtolower($item->network ?? ($item->product->network ?? ''));
+                if ($itemNetwork !== 'mtn') {
+                    continue;
+                }
+                if (!VerifiedNumber::isVerified($item->beneficiary_number)) {
+                    UnverifiedNumber::log($item->beneficiary_number, 'verified_number', 'checkout');
+                    return redirect()->back()->with('error', 'The number ' . $item->beneficiary_number . ' is not currently verified to receive orders. It has been added to the verification list and will be verified.');
+                }
+            }
+        }
+
+        // Check previous order restriction for each cart item (MTN only)
+        if ((bool) Setting::get('previous_order_restriction_enabled', 0)) {
+            foreach ($cartItems as $item) {
+                $itemNetwork = strtolower($item->network ?? ($item->product->network ?? ''));
+                if ($itemNetwork !== 'mtn') {
+                    continue;
+                }
+                $hasPreviousOrder = Order::where('beneficiary_number', $item->beneficiary_number)->exists();
+                if (!$hasPreviousOrder) {
+                    UnverifiedNumber::log($item->beneficiary_number, 'previous_order', 'checkout');
+                    return redirect()->back()->with('error', 'The number ' . $item->beneficiary_number . ' has not placed an order before and cannot receive orders at this time. It has been added to the verification list and will be verified.');
+                }
+            }
+        }
+
         // Calculate total by summing the price of each cart item
         $total = $cartItems->sum(function ($item) {
             return (float) ($item->price ?? ($item->productVariant->price ?? 0));
@@ -107,6 +138,9 @@ class OrdersController extends Controller
         }
 
         Log::info('Creating separate orders for each cart item.', ['cartItemsCount' => $cartItems->count()]);
+
+        $createdOrders = [];
+        $successMessage = '';
 
         DB::beginTransaction();
         Log::info('Database transaction started.');
@@ -128,11 +162,14 @@ class OrdersController extends Controller
             $user->save();
             Log::info('Wallet balance deducted.', ['userId' => $user->id, 'newWalletBalance' => $user->wallet_balance]);
 
-            $createdOrders = [];
-
             // Create separate order for each cart item
             foreach ($cartItems as $item) {
                 $itemTotal = (float) ($item->price ?? ($item->productVariant->price ?? 0));
+                if (!$item->product) {
+                    DB::rollBack();
+                    Log::error('Product not found for cart item.', ['cartItemId' => $item->id]);
+                    return redirect()->back()->with('error', 'One or more products in your cart could not be found.');
+                }
                 $network = $item->product->network;
 
                 // Create the order for this item

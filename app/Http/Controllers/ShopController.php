@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\UserShop;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Models\VerifiedNumber;
+use App\Models\UnverifiedNumber;
 use App\Services\AgentService;
 use App\Services\OrderPusherService;
 use App\Services\CodeCraftOrderPusherService;
@@ -15,6 +17,7 @@ use App\Services\Skanka5OrderPusherTelecelService;
 use App\Services\CodeCraftMtnOrderPusherService;
 use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
+use App\Services\PreviousOrderRestrictionService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -165,6 +168,26 @@ class ShopController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
+        $agentProduct = \App\Models\AgentProduct::with(['product', 'productVariant', 'agentShop.user'])
+            ->find($request->agent_product_id);
+
+        // Verify the product belongs to this shop
+        if ($agentProduct->agentShop->slug !== $slug) {
+            return back()->withErrors(['agent_product_id' => 'Invalid product selection.']);
+        }
+
+        // MTN-only restrictions
+        if (strtolower($agentProduct->product->network) === 'mtn') {
+            if (!VerifiedNumber::isAllowed($request->beneficiary_number)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'verified_number', 'shop');
+                return back()->withErrors(['beneficiary_number' => 'The number ' . $request->beneficiary_number . ' is not currently verified to receive orders. It has been added to the verification list and will be verified.']);
+            }
+            if (!PreviousOrderRestrictionService::isAllowed($request->beneficiary_number, $agentProduct->product->network)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'previous_order', 'shop');
+                return back()->withErrors(['beneficiary_number' => 'The number ' . $request->beneficiary_number . ' has not placed an order before and cannot receive orders at this time. It has been added to the verification list and will be verified.']);
+            }
+        }
+
         // Verify payment hasn't been used for an order already (system-wide check)
         $existingOrder = Order::where('payment_reference', $request->payment_reference)->first();
         if ($existingOrder) {
@@ -184,13 +207,6 @@ class ShopController extends Controller
         }
 
         $paymentData = $paymentVerification['data'];
-        $agentProduct = \App\Models\AgentProduct::with(['product', 'productVariant', 'agentShop.user'])
-            ->find($request->agent_product_id);
-
-        // Verify the product belongs to this shop
-        if ($agentProduct->agentShop->slug !== $slug) {
-            return back()->withErrors(['agent_product_id' => 'Invalid product selection.']);
-        }
 
         // Verify the payment amount is reasonable for the product price (allow for Paystack charges)
         $paymentAmount = $paymentData['amount'] / 100;

@@ -20,6 +20,9 @@ use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
+use App\Models\VerifiedNumber;
+use App\Models\UnverifiedNumber;
+use App\Services\PreviousOrderRestrictionService;
 
 class OrderController extends Controller
 {
@@ -38,16 +41,28 @@ class OrderController extends Controller
     public function store(StoreOrderRequest $request)
     {
         $user = auth()->user();
-        
+
         // Determine product type based on user role
         $productType = $user->role === 'customer' ? 'customer_product' : 'agent_product';
-        
+
         $product = Product::where('id', $request->network_id)
             ->where('product_type', $productType)
             ->first();
             
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        // MTN-only restrictions
+        if (strtolower($product->network) === 'mtn') {
+            if (!VerifiedNumber::isAllowed($request->beneficiary_number)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'verified_number', 'api');
+                return response()->json(['error' => 'This number is not allowed to receive orders at this time.'], 403);
+            }
+            if (!PreviousOrderRestrictionService::isAllowed($request->beneficiary_number, $product->network)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'previous_order', 'api');
+                return response()->json(['error' => 'Order can not be placed for this number.'], 403);
+            }
         }
 
         $variant = ProductVariant::where('product_id', $product->id)

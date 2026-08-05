@@ -8,6 +8,8 @@ use App\Models\ReferralCommission;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\UserShop;
+use App\Models\VerifiedNumber;
+use App\Models\UnverifiedNumber;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -346,10 +348,22 @@ class AdminController extends Controller
             'agent_upgrade_fee' => Setting::get('agent_upgrade_fee', 30),
             'track_order_video_url' => Setting::get('track_order_video_url', ''),
             'verify_topup_video_url' => Setting::get('verify_topup_video_url', ''),
+            'number_restriction_enabled' => (bool) Setting::get('number_restriction_enabled', 0),
+            'previous_order_restriction_enabled' => (bool) Setting::get('previous_order_restriction_enabled', 0),
         ];
 
+        $verifiedSearch = request('verified_search', '');
+        $verifiedNumbers = VerifiedNumber::when($verifiedSearch, fn($q) => $q->where('phone_number', 'like', "%{$verifiedSearch}%"))
+            ->latest()->paginate(50)->withQueryString();
+        $unverifiedCount = UnverifiedNumber::count();
+        $unverifiedNumbers = UnverifiedNumber::orderBy('created_at', 'desc')->get();
+
         return inertia('Admin/Settings', [
-            'settings' => $settings
+            'settings' => $settings,
+            'verifiedNumbers' => $verifiedNumbers,
+            'verifiedSearch' => $verifiedSearch,
+            'unverifiedCount' => $unverifiedCount,
+            'unverifiedNumbers' => $unverifiedNumbers,
         ]);
     }
 
@@ -376,5 +390,215 @@ class AdminController extends Controller
         Setting::set('verify_topup_video_url', $request->verify_topup_video_url);
 
         return redirect()->back()->with('success', 'Store management settings updated successfully');
+    }
+
+    public function toggleNumberRestriction(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $enabled = $request->input('enabled', false);
+        Setting::set('number_restriction_enabled', $enabled ? '1' : '0');
+
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Number restriction {$status} successfully.");
+    }
+
+    public function togglePreviousOrderRestriction(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $enabled = $request->input('enabled', false);
+        Setting::set('previous_order_restriction_enabled', $enabled ? '1' : '0');
+
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Previous order restriction {$status} successfully.");
+    }
+
+    public function addVerifiedNumber(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $request->validate([
+            'phone_number' => 'required|string|regex:/^[0-9]{9,10}$/|unique:verified_numbers,phone_number',
+        ]);
+
+        $phone = $request->phone_number;
+        if (strlen($phone) === 9) {
+            $phone = '0' . $phone;
+        }
+
+        VerifiedNumber::create(['phone_number' => $phone]);
+
+        return redirect()->back()->with('success', 'Number added successfully.');
+    }
+
+    public function importVerifiedNumbers(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $request->validate(['file' => 'required|file|mimes:csv,txt']);
+
+        try {
+            $file = $request->file('file');
+            $extension = strtolower($file->getClientOriginalExtension());
+            \Log::info('Verified number import started', ['extension' => $extension, 'name' => $file->getClientOriginalName()]);
+
+            $rows = array_map('str_getcsv', file($file->getPathname()));
+
+            \Log::info('Rows loaded', ['count' => count($rows)]);
+
+            $added = 0;
+            $skipped = 0;
+
+            foreach ($rows as $index => $row) {
+                if ($index === 0) continue;
+                $phone = trim((string) ($row[0] ?? ''));
+                // Pad 9-digit numbers with leading zero
+                if (preg_match('/^[0-9]{9}$/', $phone)) {
+                    $phone = '0' . $phone;
+                }
+                \Log::info('Processing row', ['index' => $index, 'phone' => $phone]);
+                if (!preg_match('/^[0-9]{10}$/', $phone)) {
+                    $skipped++;
+                    continue;
+                }
+                $result = VerifiedNumber::firstOrCreate(['phone_number' => $phone]);
+                if ($result->wasRecentlyCreated) $added++; else $skipped++;
+            }
+
+            \Log::info('Import complete', ['added' => $added, 'skipped' => $skipped]);
+
+            if ($added === 0 && $skipped > 0) {
+                return redirect()->back()->with('error', "No new numbers added. All {$skipped} number(s) already exist in the verified list.");
+            }
+
+            $message = "{$added} new number(s) added.";
+            if ($skipped > 0) {
+                $message .= " {$skipped} already existed and were skipped.";
+            }
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            \Log::error('Verified number import failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Import failed: ' . $e->getMessage());
+        }
+    }
+
+    public function removeVerifiedNumber(VerifiedNumber $verifiedNumber)
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $verifiedNumber->delete();
+
+        return redirect()->back()->with('success', 'Number removed successfully.');
+    }
+
+    public function downloadVerifiedNumbers()
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $numbers = VerifiedNumber::orderBy('phone_number')->pluck('phone_number');
+
+        $filename = 'verified_numbers_' . now()->format('Y_m_d_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($numbers) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['phone_number']);
+            foreach ($numbers as $number) {
+                fputcsv($handle, [$number]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function downloadOrderBeneficiaries()
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $numbers = \DB::table('order_product')
+            ->join('orders', 'orders.id', '=', 'order_product.order_id')
+            ->where('orders.network', 'MTN')
+            ->whereNotNull('order_product.beneficiary_number')
+            ->where('order_product.beneficiary_number', '!=', '')
+            ->distinct()
+            ->pluck('order_product.beneficiary_number');
+
+        $filename = 'order_beneficiaries_' . now()->format('Y_m_d_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($numbers) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['phone_number']);
+            foreach ($numbers as $number) {
+                fputcsv($handle, [$number]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function downloadUnverifiedNumbers(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $search = $request->get('search', '');
+
+        $query = UnverifiedNumber::query();
+        if ($search) {
+            $query->where('phone_number', 'like', '%' . $search . '%');
+        }
+        $numbers = $query->orderBy('created_at', 'desc')->get();
+
+        // Clear the unverified numbers after fetching
+        if ($search) {
+            $query->delete();
+        } else {
+            UnverifiedNumber::truncate();
+        }
+
+        $filename = 'unverified_numbers_' . now()->format('Y_m_d_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($numbers) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['phone_number']);
+            foreach ($numbers as $row) {
+                fputcsv($handle, [$row->phone_number]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\PaystackGuestService;
 use App\Models\Order;
+use App\Models\VerifiedNumber;
+use App\Models\UnverifiedNumber;
+use App\Services\PreviousOrderRestrictionService;
 use Illuminate\Http\Request;
 
 class GuestPaymentController extends Controller
@@ -20,11 +23,24 @@ class GuestPaymentController extends Controller
             'beneficiary_number' => 'required|string'
         ]);
 
-        $agentProduct = \App\Models\AgentProduct::find($request->agent_product_id);
-        
+        $agentProduct = \App\Models\AgentProduct::with('product')->find($request->agent_product_id);
+        $network = $agentProduct->product->network ?? '';
+
+        // MTN-only restrictions
+        if (strtolower($network) === 'mtn') {
+            if (!VerifiedNumber::isAllowed($request->beneficiary_number)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'verified_number', 'shop');
+                return response()->json(['status' => false, 'message' => 'The number ' . $request->beneficiary_number . ' is not currently verified to receive orders. It has been added to the verification list and will be verified.'], 403);
+            }
+            if (!PreviousOrderRestrictionService::isAllowed($request->beneficiary_number, $network)) {
+                UnverifiedNumber::log($request->beneficiary_number, 'previous_order', 'shop');
+                return response()->json(['status' => false, 'message' => 'The number ' . $request->beneficiary_number . ' has not placed an order before and cannot receive orders at this time. It has been added to the verification list and will be verified.'], 403);
+            }
+        }
+
         $result = $this->paystackService->initializePayment(
             $request->email,
-            $agentProduct->agent_price, // Use exact agent price without any modifications
+            $agentProduct->agent_price,
             $request->agent_product_id,
             $request->beneficiary_number
         );

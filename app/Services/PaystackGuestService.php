@@ -13,6 +13,7 @@ use App\Services\EasyDataOrderPusherService;
 use App\Services\Skanka5OrderPusherService;
 use App\Services\Skanka5OrderPusherTelecelService;
 use App\Services\DataflowOrderPusherService;
+use App\Services\MasterNetOrderPusherService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -181,7 +182,7 @@ class PaystackGuestService
                     'agent_id' => $agentProduct->agentShop->user_id,
                     'total' => $orderAmount,
                     'total_amount' => $orderAmount,
-                    'status' => 'completed',
+                    'status' => 'pending',
                     'payment_method' => 'paystack',
                     'payment_reference' => $paymentData['reference'],
                     'buyer_email' => $metadata['buyer_email'],
@@ -207,7 +208,7 @@ class PaystackGuestService
                         'agent_price' => $agentProduct->agent_price,
                         'commission_amount' => $agentProduct->commission_amount,
                         'quantity' => 1,
-                        'status' => 'available'
+                        'status' => 'pending'
                     ]);
                 }
 
@@ -281,7 +282,13 @@ class PaystackGuestService
                     $dataflowOrderPusher->pushOrderToApi($order);
                     \Log::info('Order pushed to Dataflow API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
-                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled && !$codecraftMtnEnabled && !$dataflowEnabled) {
+                $masterNetEnabled = (bool) Setting::get('successbizhub_order_pusher_enabled', 0);
+                if ($masterNetEnabled) {
+                    $masterNetOrderPusher = new MasterNetOrderPusherService();
+                    $masterNetOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to MasterNet DataHub API', ['orderId' => $order->id, 'network' => $order->network]);
+                }
+                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled && !$codecraftMtnEnabled && !$dataflowEnabled && !$masterNetEnabled) {
                     \Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
                 }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {
