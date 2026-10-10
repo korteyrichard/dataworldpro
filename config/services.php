@@ -85,6 +85,16 @@ return [
         'api_key' => env('MASTERNET_API_KEY'),
     ],
 
+    'masternetgh' => [
+        'base_url' => env('MASTERNETGH_BASE_URL', 'https://masternetgh.com/api/v1'),
+        'api_key' => env('MASTERNETGH_API_KEY'),
+    ],
+
+    'bundleportal' => [
+        'base_url' => env('BUNDLEPORTAL_BASE_URL', 'https://api.bundleportal.com/v1'),
+        'api_key'  => env('BUNDLEPORTAL_API_KEY'),
+    ],
+
     'webhooks' => [
         'masternetdatahub' => env('WEBHOOK_SECRET_MASTERNETDATAHUB'),
         'jessco' => env('WEBHOOK_SECRET_JESSCO'),

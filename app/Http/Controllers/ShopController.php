@@ -17,6 +17,9 @@ use App\Services\Skanka5OrderPusherTelecelService;
 use App\Services\CodeCraftMtnOrderPusherService;
 use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
+use App\Services\MasterNetGhOrderPusherService;
+use App\Services\BundlePortalMtnOrderPusherService;
+use App\Services\BundlePortalOrderPusherService;
 use App\Services\PreviousOrderRestrictionService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -642,53 +645,58 @@ class ShopController extends Controller
             $easydataEnabled = (bool) Setting::get('easydata_order_pusher_enabled', 1);
             $skanka5Enabled = (bool) Setting::get('skanka5_order_pusher_enabled', 1);
             $skanka5TelecelEnabled = (bool) Setting::get('skanka5_telecel_order_pusher_enabled', 1);
+            $bundlePortalMtnEnabled = (bool) Setting::get('bundleportal_mtn_api_enabled', 0);
+            $bundlePortalEnabled = (bool) Setting::get('bundleportal_api_enabled', 0);
             
             if (strtolower($order->network) === 'mtn') {
-                if ($jaybartEnabled) {
-                    $mtnOrderPusher = new OrderPusherService();
-                    $mtnOrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to Jaybart API', ['orderId' => $order->id, 'network' => $order->network]);
+                if ($bundlePortalMtnEnabled) {
+                    (new BundlePortalMtnOrderPusherService())->pushOrderToApi($order);
+                    \Log::info('Order pushed to BundlePortal MTN API', ['orderId' => $order->id]);
+                } elseif ($codecraftMtnEnabled) {
+                    $codeCraftMtnOrderPusher = new CodeCraftMtnOrderPusherService();
+                    $codeCraftMtnOrderPusher->pushOrderToApi($order);
+                    \Log::info('Order pushed to CodeCraft MTN API', ['orderId' => $order->id, 'network' => $order->network]);
+                } else {
+                    if ($jaybartEnabled) {
+                        $mtnOrderPusher = new OrderPusherService();
+                        $mtnOrderPusher->pushOrderToApi($order);
+                    }
                 }
                 if ($jescoEnabled) {
                     $jescoOrderPusher = new JescoOrderPusherService();
                     $jescoOrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to Jesco API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
                 if ($easydataEnabled) {
                     $easydataOrderPusher = new EasyDataOrderPusherService();
                     $easydataOrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to EasyData API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
                 if ($skanka5Enabled) {
                     $skanka5OrderPusher = new Skanka5OrderPusherService();
                     $skanka5OrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to Skanka5 API', ['orderId' => $order->id, 'network' => $order->network]);
-                }
-                if ($codecraftMtnEnabled) {
-                    $codeCraftMtnOrderPusher = new CodeCraftMtnOrderPusherService();
-                    $codeCraftMtnOrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to CodeCraft MTN API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
                 $dataflowEnabled = (bool) Setting::get('dataflow_order_pusher_enabled', 0);
                 if ($dataflowEnabled) {
                     $dataflowOrderPusher = new DataflowOrderPusherService();
                     $dataflowOrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to Dataflow API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
                 $masterNetEnabled = (bool) Setting::get('successbizhub_order_pusher_enabled', 0);
                 if ($masterNetEnabled) {
                     $masterNetOrderPusher = new MasterNetOrderPusherService();
                     $masterNetOrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to MasterNet DataHub API', ['orderId' => $order->id, 'network' => $order->network]);
                 }
-                if (!$jaybartEnabled && !$jescoEnabled && !$easydataEnabled && !$skanka5Enabled && !$codecraftMtnEnabled && !$dataflowEnabled && !$masterNetEnabled) {
-                    \Log::info('All MTN order pushers disabled', ['orderId' => $order->id, 'network' => $order->network]);
+                $masterNetGhEnabled = (bool) Setting::get('masternetgh_order_pusher_enabled', 0);
+                if ($masterNetGhEnabled) {
+                    $masterNetGhOrderPusher = new MasterNetGhOrderPusherService();
+                    $masterNetGhOrderPusher->pushOrderToApi($order);
                 }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime', 'at'])) {
-                if ($codecraftEnabled) {
+                if ($bundlePortalEnabled) {
+                    (new BundlePortalOrderPusherService())->pushOrderToApi($order);
+                    \Log::info('Order pushed to BundlePortal API', ['orderId' => $order->id]);
+                } else {
                     $codeCraftOrderPusher = new CodeCraftOrderPusherService();
                     $codeCraftOrderPusher->pushOrderToApi($order);
-                    \Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);
+                    \Log::info('Order pushed to CodeCraft API (fallback)', ['orderId' => $order->id]);
                 }
                 if (strtolower($order->network) === 'telecel' && $skanka5TelecelEnabled) {
                     $skanka5TelecelOrderPusher = new Skanka5OrderPusherTelecelService();

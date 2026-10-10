@@ -45,6 +45,9 @@ class AdminDashboardController extends Controller
             'codecraftMtnOrderPusherEnabled' => (bool) Setting::get('codecraft_mtn_order_pusher_enabled', 1),
             'dataflowOrderPusherEnabled' => (bool) Setting::get('dataflow_order_pusher_enabled', 0),
             'masterNetOrderPusherEnabled' => (bool) Setting::get('successbizhub_order_pusher_enabled', 0),
+            'masterNetGhOrderPusherEnabled' => (bool) Setting::get('masternetgh_order_pusher_enabled', 0),
+            'bundlePortalMtnApiEnabled'      => (bool) Setting::get('bundleportal_mtn_api_enabled', 0),
+            'bundlePortalApiEnabled'         => (bool) Setting::get('bundleportal_api_enabled', 0),
         ]);
     }
 
@@ -891,6 +894,42 @@ class AdminDashboardController extends Controller
         
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "MasterNet DataHub order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle MasterNetGh order pusher functionality.
+     */
+    public function toggleMasterNetGhOrderPusher(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('masternetgh_order_pusher_enabled', $enabled ? '1' : '0');
+
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "MasterNetGh New order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle Bundle Portal MTN order pusher.
+     */
+    public function toggleBundlePortalMtnApi(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('bundleportal_mtn_api_enabled', $enabled ? '1' : '0');
+
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Bundle Portal MTN order pusher {$status} successfully.");
+    }
+
+    /**
+     * Toggle Bundle Portal (Telecel/AT/Ishare) order pusher.
+     */
+    public function toggleBundlePortalApi(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('bundleportal_api_enabled', $enabled ? '1' : '0');
+
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Bundle Portal order pusher {$status} successfully.");
     }
 
     /**

@@ -63,6 +63,7 @@ export default function Settings({ auth, settings, verifiedNumbers, verifiedSear
     });
 
     const importForm = useForm<{ file: File | null }>({ file: null });
+    const importTextForm = useForm<{ numbers: string }>({ numbers: '' });
 
     const [newNumber, setNewNumber] = useState('');
     const [addingNumber, setAddingNumber] = useState(false);
@@ -108,6 +109,14 @@ export default function Settings({ auth, settings, verifiedNumbers, verifiedSear
             forceFormData: true,
             onSuccess: () => importForm.reset(),
             onError: () => toast({ title: 'Error', description: 'Import failed. Please try again.', variant: 'destructive' }),
+        });
+    };
+
+    const importNumbersText = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importTextForm.data.numbers.trim()) return;
+        importTextForm.post(route('admin.verified-numbers.import-text'), {
+            onSuccess: () => importTextForm.reset(),
         });
     };
 
@@ -345,7 +354,7 @@ export default function Settings({ auth, settings, verifiedNumbers, verifiedSear
                                     </Button>
                                 </form>
 
-                                {/* Import from file - completely separate form */}
+                                {/* Import from file */}
                                 <form onSubmit={importNumbers} className="flex gap-2">
                                     <Input
                                         type="file"
@@ -367,6 +376,22 @@ export default function Settings({ auth, settings, verifiedNumbers, verifiedSear
                                         <div className="px-3 py-1">0201234567</div>
                                     </div>
                                 </div>
+
+                                {/* Import from text */}
+                                <form onSubmit={importNumbersText} className="space-y-2">
+                                    <Label>Paste Numbers (one per line or comma-separated)</Label>
+                                    <div className="flex gap-2 items-start">
+                                        <textarea
+                                            className="flex min-h-[80px] w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                            placeholder={`0241234567\n0551234567\n0201234567`}
+                                            value={importTextForm.data.numbers}
+                                            onChange={(e) => importTextForm.setData('numbers', e.target.value)}
+                                        />
+                                        <Button type="submit" disabled={importTextForm.processing || !importTextForm.data.numbers.trim()}>
+                                            {importTextForm.processing ? 'Importing...' : 'Import Numbers'}
+                                        </Button>
+                                    </div>
+                                </form>
 
                                 {/* Search */}
                                 <form onSubmit={(e) => { e.preventDefault(); router.get(route('admin.settings'), { verified_search: search }, { preserveState: true, preserveScroll: true }); }} className="flex gap-2">

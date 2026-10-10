@@ -18,6 +18,9 @@ use App\Services\Skanka5OrderPusherTelecelService;
 use App\Services\CodeCraftMtnOrderPusherService;
 use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
+use App\Services\MasterNetGhOrderPusherService;
+use App\Services\BundlePortalMtnOrderPusherService;
+use App\Services\BundlePortalOrderPusherService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
 use App\Models\VerifiedNumber;
@@ -136,42 +139,36 @@ class OrderController extends Controller
         // Push order to external API based on network (if enabled)
         try {
             if (strtolower($order->network) === 'mtn') {
-                if (Setting::get('jaybart_order_pusher_enabled', 1)) {
-                    $mtnOrderPusher = new OrderPusherService();
-                    $mtnOrderPusher->pushOrderToApi($order);
-                }
-                if (Setting::get('jesco_order_pusher_enabled', 1)) {
-                    $jescoOrderPusher = new JescoOrderPusherService();
-                    $jescoOrderPusher->pushOrderToApi($order);
-                }
-                if (Setting::get('easydata_order_pusher_enabled', 1)) {
-                    $easydataOrderPusher = new EasyDataOrderPusherService();
-                    $easydataOrderPusher->pushOrderToApi($order);
-                }
-                if (Setting::get('skanka5_order_pusher_enabled', 1)) {
-                    $skanka5OrderPusher = new Skanka5OrderPusherService();
-                    $skanka5OrderPusher->pushOrderToApi($order);
-                }
-                if (Setting::get('codecraft_mtn_order_pusher_enabled', 1)) {
-                    $codeCraftMtnOrderPusher = new CodeCraftMtnOrderPusherService();
-                    $codeCraftMtnOrderPusher->pushOrderToApi($order);
-                }
-                if (Setting::get('dataflow_order_pusher_enabled', 0)) {
-                    $dataflowOrderPusher = new DataflowOrderPusherService();
-                    $dataflowOrderPusher->pushOrderToApi($order);
+                if (Setting::get('bundleportal_mtn_api_enabled', 0)) {
+                    (new BundlePortalMtnOrderPusherService())->pushOrderToApi($order);
+                } elseif (Setting::get('codecraft_mtn_order_pusher_enabled', 1)) {
+                    (new CodeCraftMtnOrderPusherService())->pushOrderToApi($order);
+                } elseif (Setting::get('dataflow_order_pusher_enabled', 0)) {
+                    (new DataflowOrderPusherService())->pushOrderToApi($order);
+                } elseif (Setting::get('easydata_order_pusher_enabled', 1)) {
+                    (new EasyDataOrderPusherService())->pushOrderToApi($order);
+                } elseif (Setting::get('skanka5_order_pusher_enabled', 1)) {
+                    (new Skanka5OrderPusherService())->pushOrderToApi($order);
+                } elseif (Setting::get('jaybart_order_pusher_enabled', 1)) {
+                    (new OrderPusherService())->pushOrderToApi($order);
                 }
                 if (Setting::get('successbizhub_order_pusher_enabled', 0)) {
-                    $masterNetOrderPusher = new MasterNetOrderPusherService();
-                    $masterNetOrderPusher->pushOrderToApi($order);
+                    (new MasterNetOrderPusherService())->pushOrderToApi($order);
+                }
+                if (Setting::get('masternetgh_order_pusher_enabled', 0)) {
+                    (new MasterNetGhOrderPusherService())->pushOrderToApi($order);
+                }
+                if (Setting::get('jesco_order_pusher_enabled', 1)) {
+                    (new JescoOrderPusherService())->pushOrderToApi($order);
                 }
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
-                if (Setting::get('codecraft_order_pusher_enabled', 1)) {
-                    $codeCraftOrderPusher = new CodeCraftOrderPusherService();
-                    $codeCraftOrderPusher->pushOrderToApi($order);
+                if (Setting::get('bundleportal_api_enabled', 0)) {
+                    (new BundlePortalOrderPusherService())->pushOrderToApi($order);
+                } else {
+                    (new CodeCraftOrderPusherService())->pushOrderToApi($order);
                 }
                 if (strtolower($order->network) === 'telecel' && Setting::get('skanka5_telecel_order_pusher_enabled', 1)) {
-                    $skanka5TelecelOrderPusher = new Skanka5OrderPusherTelecelService();
-                    $skanka5TelecelOrderPusher->pushOrderToApi($order);
+                    (new Skanka5OrderPusherTelecelService())->pushOrderToApi($order);
                 }
             } else {
                 Log::info('Order pusher disabled for network - skipping API call', ['orderId' => $order->id, 'network' => $order->network]);

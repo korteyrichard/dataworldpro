@@ -34,6 +34,7 @@ class MasterNetOrderStatusSyncService
         }])
         ->whereIn('status', ['pending', 'processing'])
         ->whereNotNull('reference_id')
+        ->where('order_pusher_status', 'success')
         ->get();
 
         foreach ($processingOrders as $order) {

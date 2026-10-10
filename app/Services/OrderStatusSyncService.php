@@ -7,6 +7,8 @@ use App\Services\MoolreSmsService;
 use App\Services\Skanka5OrderStatusSyncService;
 use App\Services\Skanka5OrderStatusSyncTelecelService;
 use App\Services\DataflowOrderStatusSyncService;
+use App\Services\BundlePortalMtnOrderStatusSyncService;
+use App\Services\BundlePortalOrderStatusSyncService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -80,6 +82,19 @@ class OrderStatusSyncService
             } catch (\Exception $e) {
                 Log::error('Failed to sync order status', ['orderId' => $order->id, 'error' => $e->getMessage()]);
             }
+        }
+        // BundlePortal MTN sync
+        try {
+            (new BundlePortalMtnOrderStatusSyncService())->syncPendingOrders();
+        } catch (\Exception $e) {
+            Log::error('BundlePortal MTN sync failed', ['error' => $e->getMessage()]);
+        }
+
+        // BundlePortal Telecel/AT sync
+        try {
+            (new BundlePortalOrderStatusSyncService())->syncPendingOrders();
+        } catch (\Exception $e) {
+            Log::error('BundlePortal sync failed', ['error' => $e->getMessage()]);
         }
     }
 

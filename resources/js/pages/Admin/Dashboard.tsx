@@ -43,6 +43,9 @@ interface AdminDashboardProps extends PageProps {
   skanka5TelecelOrderPusherEnabled: boolean;
   dataflowOrderPusherEnabled: boolean;
   masterNetOrderPusherEnabled: boolean;
+  masterNetGhOrderPusherEnabled: boolean;
+  bundlePortalMtnApiEnabled: boolean;
+  bundlePortalApiEnabled: boolean;
 }
 
 const StatCard = ({ title, value }: { title: string; value: number | string }) => (
@@ -63,6 +66,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   skanka5TelecelOrderPusherEnabled,
   dataflowOrderPusherEnabled,
   masterNetOrderPusherEnabled,
+  masterNetGhOrderPusherEnabled,
+  bundlePortalMtnApiEnabled,
+  bundlePortalApiEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
 
@@ -117,6 +123,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const toggleMasterNetOrderPusher = () => {
     router.post('/admin/toggle-successbizhub-order-pusher', {
       enabled: !masterNetOrderPusherEnabled
+    });
+  };
+
+  const toggleMasterNetGhOrderPusher = () => {
+    router.post('/admin/toggle-masternetgh-order-pusher', {
+      enabled: !masterNetGhOrderPusherEnabled
+    });
+  };
+
+  const toggleBundlePortalMtnApi = () => {
+    router.post(route('admin.bundleportal-mtn-api.toggle'), {
+      enabled: !bundlePortalMtnApiEnabled
+    });
+  };
+
+  const toggleBundlePortalApi = () => {
+    router.post(route('admin.bundleportal-api.toggle'), {
+      enabled: !bundlePortalApiEnabled
     });
   };
 
@@ -363,6 +387,78 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                       masterNetOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* MasterNetGh New Order Pusher */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">MasterNetGh New Order Pusher</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {masterNetGhOrderPusherEnabled ? 'MTN orders are being pushed to MasterNetGh New API' : 'MasterNetGh New order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleMasterNetGhOrderPusher}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    masterNetGhOrderPusherEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      masterNetGhOrderPusherEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Bundle Portal Order Pusher MTN */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Bundle Portal Order Pusher MTN (MTN)</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {bundlePortalMtnApiEnabled ? 'MTN orders are being pushed to Bundle Portal API' : 'Bundle Portal MTN order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleBundlePortalMtnApi}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    bundlePortalMtnApiEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      bundlePortalMtnApiEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Bundle Portal Order Pusher (Telecel/AT/Ishare) */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Bundle Portal Order Pusher (Telecel, AT, Ishare)</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">
+                    {bundlePortalApiEnabled ? 'Telecel/AT/Ishare orders are being pushed to Bundle Portal API' : 'Bundle Portal Telecel/AT/Ishare order pushing is disabled'}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleBundlePortalApi}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    bundlePortalApiEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      bundlePortalApiEnabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>

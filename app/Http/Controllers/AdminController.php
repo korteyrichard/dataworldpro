@@ -491,6 +491,41 @@ class AdminController extends Controller
         }
     }
 
+    public function importVerifiedNumbersText(Request $request)
+    {
+        if (!Auth::user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Access denied');
+        }
+
+        $request->validate(['numbers' => 'required|string']);
+
+        $lines = preg_split('/[\r\n,]+/', $request->numbers);
+        $added = 0;
+        $skipped = 0;
+
+        foreach ($lines as $line) {
+            $phone = trim($line);
+            if ($phone === '') continue;
+            if (preg_match('/^[0-9]{9}$/', $phone)) {
+                $phone = '0' . $phone;
+            }
+            if (!preg_match('/^[0-9]{10}$/', $phone)) {
+                $skipped++;
+                continue;
+            }
+            $result = VerifiedNumber::firstOrCreate(['phone_number' => $phone]);
+            if ($result->wasRecentlyCreated) $added++; else $skipped++;
+        }
+
+        if ($added === 0 && $skipped > 0) {
+            return redirect()->back()->with('error', "No new numbers added. All {$skipped} number(s) already exist.");
+        }
+
+        $message = "{$added} new number(s) added.";
+        if ($skipped > 0) $message .= " {$skipped} skipped (invalid or already exist).";
+        return redirect()->back()->with('success', $message);
+    }
+
     public function removeVerifiedNumber(VerifiedNumber $verifiedNumber)
     {
         if (!Auth::user()->isAdmin()) {

@@ -88,7 +88,7 @@ class InboundWebhookController extends Controller
             return;
         }
 
-        $newStatus = $this->mapStatus($externalStatus);
+        $newStatus = $this->mapStatus($externalStatus, $source);
 
         if (!$newStatus || $newStatus === $order->status) {
             Log::info("Webhook status unchanged", ['order_id' => $order->id, 'current' => $order->status, 'external' => $externalStatus, 'source' => $source]);
@@ -122,7 +122,7 @@ class InboundWebhookController extends Controller
         }
     }
 
-    private function mapStatus(string $externalStatus): ?string
+    private function mapStatus(string $externalStatus, string $source = ''): ?string
     {
         $statusMap = [
             'delivered' => 'completed',
@@ -135,6 +135,10 @@ class InboundWebhookController extends Controller
             'cancelled' => 'cancelled',
             'rejected' => 'cancelled',
         ];
+
+        if ($source === 'masternetdatahub') {
+            unset($statusMap['failed'], $statusMap['cancelled'], $statusMap['rejected']);
+        }
 
         return $statusMap[strtolower($externalStatus)] ?? null;
     }

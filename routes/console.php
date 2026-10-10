@@ -26,5 +26,17 @@ Schedule::command('orders:sync-codecraft-status')->everyTenMinutes();
 // Sync CodeCraft MTN order statuses
 Schedule::command('orders:sync-codecraft-mtn-status')->everyTenMinutes();
 
+// Sync MasterNet order statuses
+Schedule::command('orders:sync-masternet-status')->everyTenMinutes();
+
+// Sync MasterNetGh order statuses
+Schedule::command('orders:sync-masternetgh-status')->everyTenMinutes();
+
+// Sync BundlePortal (Telecel/AT/Ishare) order statuses
+Schedule::command('orders:sync-bundleportal-status')->everyTenMinutes();
+
+// Sync BundlePortal MTN order statuses
+Schedule::command('orders:sync-bundleportal-mtn-status')->everyTenMinutes();
+
 // Check failed orders and sync with external APIs
 Schedule::command('orders:sync-failed')->hourly();

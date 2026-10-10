@@ -129,6 +129,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('toggle-codecraft-mtn-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleCodecraftMtnOrderPusher'])->name('toggle.codecraft.mtn.order.pusher');
     Route::post('toggle-dataflow-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleDataflowOrderPusher'])->name('toggle.dataflow.order.pusher');
     Route::post('toggle-successbizhub-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSuccessBizHubOrderPusher'])->name('toggle.successbizhub.order.pusher');
+    Route::post('toggle-masternetgh-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleMasterNetGhOrderPusher'])->name('toggle.masternetgh.order.pusher');
+    Route::post('bundleportal-mtn-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtnApi'])->name('bundleportal-mtn-api.toggle');
+    Route::post('bundleportal-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalApi'])->name('bundleportal-api.toggle');
     
     // Alert routes
     Route::resource('alerts', \App\Http\Controllers\Admin\AlertController::class);
@@ -144,6 +147,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('toggle-previous-order-restriction', [AdminController::class, 'togglePreviousOrderRestriction'])->name('toggle.previous.order.restriction');
     Route::post('verified-numbers', [AdminController::class, 'addVerifiedNumber'])->name('verified-numbers.store');
     Route::post('verified-numbers/import', [AdminController::class, 'importVerifiedNumbers'])->name('verified-numbers.import');
+    Route::post('verified-numbers/import-text', [AdminController::class, 'importVerifiedNumbersText'])->name('verified-numbers.import-text');
     Route::get('verified-numbers/download', [AdminController::class, 'downloadVerifiedNumbers'])->name('verified-numbers.download');
     Route::get('unverified-numbers/download', [AdminController::class, 'downloadUnverifiedNumbers'])->name('unverified-numbers.download');
     Route::delete('verified-numbers/{verifiedNumber}', [AdminController::class, 'removeVerifiedNumber'])->name('verified-numbers.destroy');
