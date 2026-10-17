@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class BundlePortalMtnOrderPusherService
 {
+    protected string $network = 'mtn';
     private string $baseUrl;
     private string $apiKey;
 
@@ -17,12 +19,13 @@ class BundlePortalMtnOrderPusherService
         $this->apiKey  = config('services.bundleportal.api_key');
     }
 
-    public function pushOrderToApi(Order $order): void
+    public function pushOrderToApi(Order $order): bool
     {
         $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
         $processed = 0;
+        $successful = 0;
 
-        foreach ($items as $item) {
+        foreach ($items as $lineNumber => $item) {
             if (stripos($item->name, 'mtn') === false) {
                 continue;
             }
@@ -39,11 +42,11 @@ class BundlePortalMtnOrderPusherService
             }
 
             $processed++;
-            $externalOrderId = 'SD-' . $order->id;
+            $externalOrderId = 'SD-' . $order->id . '-' . strtoupper(str_replace('_', '', $this->network)) . '-' . ($lineNumber + 1);
 
             $payload = [
                 'action'       => 'place_order',
-                'network'      => 'mtn',
+                'network'      => $this->network,
                 'recipient'    => $phone,
                 'package_size' => $gb,
                 'order_id'     => $externalOrderId,
@@ -66,10 +69,19 @@ class BundlePortalMtnOrderPusherService
                 ]);
 
                 if (!empty($data['success']) && !empty($data['data']['reference'])) {
-                    $order->update([
-                        'reference_id'       => $data['data']['reference'],
+                    $update = [
+                        'reference_id' => $data['data']['reference'],
                         'order_pusher_status' => 'success',
-                    ]);
+                    ];
+
+                    // Keep a successful paid order successful if the production
+                    // database has not yet received the Bundle Portal reference migration.
+                    if (Schema::hasColumn('orders', 'bundleportal_reference_id')) {
+                        $update['bundleportal_reference_id'] = $data['data']['reference'];
+                    }
+
+                    $order->update($update);
+                    $successful++;
                 } else {
                     $order->update(['order_pusher_status' => 'failed']);
                     Log::error('BundlePortal MTN API error', ['response' => $data]);
@@ -81,8 +93,11 @@ class BundlePortalMtnOrderPusherService
         }
 
         if ($processed === 0) {
-            Log::info('BundlePortal MTN: no MTN items processed', ['order_id' => $order->id]);
+            $order->update(['order_pusher_status' => 'failed']);
+            Log::warning('BundlePortal MTN: no MTN items were submitted', ['order_id' => $order->id]);
         }
+
+        return $successful > 0;
     }
 
     public function checkOrderStatus(string $reference): ?array

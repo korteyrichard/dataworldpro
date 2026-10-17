@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserShop;
+use App\Models\Commission;
 use App\Models\Product;
+use App\Models\ReferralCommission;
 use App\Models\Withdrawal;
 use App\Models\Setting;
 use App\Services\AgentService;
 use App\Services\CommissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AgentController extends Controller
 {
@@ -258,6 +261,41 @@ class AgentController extends Controller
         return inertia('Agent/Commissions', [
             'commissions' => $commissions
         ]);
+    }
+
+    public function completeCommission(int $commissionId)
+    {
+        $user = Auth::user();
+
+        $completed = DB::transaction(function () use ($commissionId, $user) {
+            $commission = Commission::where('agent_id', $user->id)
+                ->whereKey($commissionId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($commission->status !== 'pending') {
+                return false;
+            }
+
+            $commission->update([
+                'status' => 'available',
+                'available_at' => now(),
+            ]);
+
+            ReferralCommission::where('commission_id', $commission->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'available',
+                    'available_at' => now(),
+                ]);
+
+            return true;
+        });
+
+        return redirect()->back()->with(
+            $completed ? 'success' : 'error',
+            $completed ? 'Commission added to your available balance.' : 'This commission is no longer pending.'
+        );
     }
 
     public function referrals()

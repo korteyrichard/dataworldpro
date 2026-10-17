@@ -61,7 +61,7 @@ return [
     ],
 
     'skanka5' => [
-        'base_url' => env('SKANKA5_BASE_URL', 'https://agent.skanka5.com/api/v1'),
+        'base_url' => env('SKANKA5_BASE_URL', 'https://tsk05.net/v1'),
         'api_key' => env('SKANKA5_API_KEY'),
     ],
 
@@ -91,8 +91,9 @@ return [
     ],
 
     'bundleportal' => [
-        'base_url' => env('BUNDLEPORTAL_BASE_URL', 'https://api.bundleportal.com/v1'),
+        'base_url' => env('BUNDLEPORTAL_BASE_URL', 'https://api.bundleportal.com/v2'),
         'api_key'  => env('BUNDLEPORTAL_API_KEY'),
+        'webhook_secret' => env('BUNDLEPORTAL_WEBHOOK_SECRET'),
     ],
 
     'webhooks' => [

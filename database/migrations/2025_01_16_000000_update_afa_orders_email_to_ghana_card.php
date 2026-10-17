@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('afa_orders', function (Blueprint $table) {
-            $table->renameColumn('email', 'ghana_card');
-        });
+        // Some fresh installs create this table in a later migration.
+        // Rename only when the legacy column is actually present.
+        if (Schema::hasTable('afa_orders')
+            && Schema::hasColumn('afa_orders', 'email')
+            && !Schema::hasColumn('afa_orders', 'ghana_card')) {
+            Schema::table('afa_orders', function (Blueprint $table) {
+                $table->renameColumn('email', 'ghana_card');
+            });
+        }
     }
 
     /**
@@ -21,8 +27,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('afa_orders', function (Blueprint $table) {
-            $table->renameColumn('ghana_card', 'email');
-        });
+        if (Schema::hasTable('afa_orders')
+            && Schema::hasColumn('afa_orders', 'ghana_card')
+            && !Schema::hasColumn('afa_orders', 'email')) {
+            Schema::table('afa_orders', function (Blueprint $table) {
+                $table->renameColumn('ghana_card', 'email');
+            });
+        }
     }
 };

@@ -1,7 +1,9 @@
 import React from 'react';
+import { router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import Pagination from '@/components/pagination';
 
 interface Commission {
@@ -47,6 +49,7 @@ export default function Commissions({ auth, commissions }: CommissionsProps) {
                                     <th className="text-left p-2">Commission</th>
                                     <th className="text-left p-2">Status</th>
                                     <th className="text-left p-2">Date</th>
+                                    <th className="text-left p-2">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -62,6 +65,16 @@ export default function Commissions({ auth, commissions }: CommissionsProps) {
                                             </Badge>
                                         </td>
                                         <td className="p-2">{new Date(commission.created_at).toLocaleDateString()}</td>
+                                        <td className="p-2">
+                                            {commission.status === 'pending' && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => router.post(route('agent.commissions.complete', commission.id))}
+                                                >
+                                                    Complete
+                                                </Button>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

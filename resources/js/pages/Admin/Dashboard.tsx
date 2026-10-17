@@ -45,6 +45,8 @@ interface AdminDashboardProps extends PageProps {
   masterNetOrderPusherEnabled: boolean;
   masterNetGhOrderPusherEnabled: boolean;
   bundlePortalMtnApiEnabled: boolean;
+  bundlePortalMtn2ApiEnabled: boolean;
+  bundlePortalMtn3ApiEnabled: boolean;
   bundlePortalApiEnabled: boolean;
 }
 
@@ -68,6 +70,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   masterNetOrderPusherEnabled,
   masterNetGhOrderPusherEnabled,
   bundlePortalMtnApiEnabled,
+  bundlePortalMtn2ApiEnabled,
+  bundlePortalMtn3ApiEnabled,
   bundlePortalApiEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
@@ -144,6 +148,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
   };
 
+  const toggleBundlePortalMtn2Api = () => {
+    router.post(route('admin.bundleportal-mtn-2-api.toggle'), { enabled: !bundlePortalMtn2ApiEnabled });
+  };
+
+  const toggleBundlePortalMtn3Api = () => {
+    router.post(route('admin.bundleportal-mtn-3-api.toggle'), { enabled: !bundlePortalMtn3ApiEnabled });
+  };
+
   return (
     <AdminLayout
       user={auth?.user}
@@ -176,6 +188,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Order Pusher Controls */}
         <section>
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">System Controls</h3>
+          <p className="mb-4 text-sm text-gray-500 dark:text-gray-300">Bundle Portal MTN sends each order once. If multiple routes are enabled, it selects the first enabled route in this order: mtn, mtn_2, mtn_3. It does not switch routes automatically if that route cannot accept a recipient.</p>
           <div className="space-y-4">
             {/* Jaybart Order Pusher */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
@@ -421,7 +434,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Bundle Portal Order Pusher MTN (MTN)</h4>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Bundle Portal MTN Order Pusher (mtn)</h4>
                   <p className="text-sm text-gray-500 dark:text-gray-300">
                     {bundlePortalMtnApiEnabled ? 'MTN orders are being pushed to Bundle Portal API' : 'Bundle Portal MTN order pushing is disabled'}
                   </p>
@@ -437,6 +450,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       bundlePortalMtnApiEnabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
+                </button>
+              </div>
+            </div>
+
+            {/* Bundle Portal MTN 2 route */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Bundle Portal MTN 2 Order Pusher (mtn_2)</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">{bundlePortalMtn2ApiEnabled ? 'MTN orders can use the mtn_2 route' : 'Bundle Portal mtn_2 route is disabled'}</p>
+                </div>
+                <button type="button" aria-label="Toggle Bundle Portal MTN 2 order pusher" aria-pressed={bundlePortalMtn2ApiEnabled} onClick={toggleBundlePortalMtn2Api} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${bundlePortalMtn2ApiEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${bundlePortalMtn2ApiEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Bundle Portal MTN 3 route */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Bundle Portal MTN 3 Order Pusher (mtn_3)</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-300">{bundlePortalMtn3ApiEnabled ? 'MTN orders can use the mtn_3 route' : 'Bundle Portal mtn_3 route is disabled'}</p>
+                </div>
+                <button type="button" aria-label="Toggle Bundle Portal MTN 3 order pusher" aria-pressed={bundlePortalMtn3ApiEnabled} onClick={toggleBundlePortalMtn3Api} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${bundlePortalMtn3ApiEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${bundlePortalMtn3ApiEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>

@@ -16,6 +16,7 @@ class Order extends Model
         'beneficiary_number', 
         'network', 
         'reference_id',
+        'bundleportal_reference_id',
         'payment_reference',
         'payment_method',
         'buyer_email',

@@ -222,6 +222,13 @@ class CartController extends Controller
         $cart->delete();
         return redirect()->back()->with('success', 'Product removed from cart!');
     }
+
+    public function clear()
+    {
+        Cart::where('user_id', Auth::id())->delete();
+
+        return redirect()->back()->with('success', 'Cart cleared!');
+    }
     
     public function processExcelToCart(Request $request)
     {

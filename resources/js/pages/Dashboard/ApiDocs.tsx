@@ -302,6 +302,38 @@ BIGTIME: 8`}
                         </div>
                     </div>
 
+                    {/* Number verification API */}
+                    <div className="mb-8">
+                        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Number Verification API</h3>
+                        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                <strong>POST</strong> /api/v1/verify-number
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                Check whether a number is currently allowed to receive an order. Requires an API token. MTN checks use the active verified-number and previous-order restrictions; other networks are allowed by these restrictions.
+                            </p>
+                            <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto mb-2">
+{`{
+  "beneficiary_number": "0241234567",
+  "network": "MTN"
+}`}
+                            </pre>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Successful response:</p>
+                            <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
+{`{
+  "allowed": false,
+  "beneficiary_number": "0241234567",
+  "network": "MTN",
+  "checks": {
+    "verified_number": true,
+    "previous_order": false
+  }
+}`}
+                            </pre>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">The number must be exactly 10 digits. Invalid input returns HTTP 422.</p>
+                        </div>
+                    </div>
+
                     {/* Orders API */}
                     <div className="mb-8">
                         <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Orders API</h3>

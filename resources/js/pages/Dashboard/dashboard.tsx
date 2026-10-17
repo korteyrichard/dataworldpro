@@ -1,7 +1,7 @@
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Head, usePage, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '@/components/ui/icon';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -80,6 +80,7 @@ export default function Dashboard({ auth }: DashboardProps) {
   const [bundleSize, setBundleSize] = useState('');
   const [bulkNumbers, setBulkNumbers] = useState('');
   const [excelFile, setExcelFile] = useState<File | null>(null);
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<Array<{value: string, label: string, price: number}>>([]);
   const [loadingSizes, setLoadingSizes] = useState(false);
@@ -319,6 +320,13 @@ export default function Dashboard({ auth }: DashboardProps) {
         alert('Please select a valid CSV file (.csv)');
         e.target.value = ''; // Reset the input
       }
+    }
+  };
+
+  const clearExcelDetails = () => {
+    setExcelFile(null);
+    if (excelFileInputRef.current) {
+      excelFileInputRef.current.value = '';
     }
   };
 
@@ -648,6 +656,7 @@ export default function Dashboard({ auth }: DashboardProps) {
                       {isDragOver ? 'Drop your CSV file here' : 'Drag & drop your CSV file here'}
                     </div>
                     <input
+                      ref={excelFileInputRef}
                       type="file"
                       accept=".csv"
                       onChange={handleFileChange}
@@ -669,13 +678,23 @@ export default function Dashboard({ auth }: DashboardProps) {
                       Supported format: .csv only
                     </div>
                   </div>
-                  <Button 
-                    onClick={handleProcessExcel}
-                    disabled={!excelFile || isProcessing}
-                    className={`w-full ${getNetworkButtonColors(selectedNetwork)} text-white`}
-                  >
-                    {isProcessing ? 'Processing...' : 'Process & Add to Cart'}
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={clearExcelDetails}
+                      className="w-full sm:w-auto"
+                    >
+                      Clear All
+                    </Button>
+                    <Button 
+                      onClick={handleProcessExcel}
+                      disabled={!excelFile || isProcessing}
+                      className={`w-full ${getNetworkButtonColors(selectedNetwork)} text-white`}
+                    >
+                      {isProcessing ? 'Processing...' : 'Process & Add to Cart'}
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -691,13 +710,23 @@ export default function Dashboard({ auth }: DashboardProps) {
                       className="w-full"
                     />
                   </div>
-                  <Button 
-                    onClick={handleProcessBulk}
-                    disabled={!bulkNumbers.trim() || isProcessing}
-                    className={`w-full ${getNetworkButtonColors(selectedNetwork)} text-white`}
-                  >
-                    {isProcessing ? 'Processing...' : 'Add Bulk to Cart'}
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setBulkNumbers('')}
+                      className="w-full sm:w-auto"
+                    >
+                      Clear All
+                    </Button>
+                    <Button 
+                      onClick={handleProcessBulk}
+                      disabled={!bulkNumbers.trim() || isProcessing}
+                      className={`w-full ${getNetworkButtonColors(selectedNetwork)} text-white`}
+                    >
+                      {isProcessing ? 'Processing...' : 'Add Bulk to Cart'}
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -759,11 +788,20 @@ export default function Dashboard({ auth }: DashboardProps) {
           {/* CART ITEM SECTION....................................................... */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden mt-8">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-3">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">🛒 Cart Items</h3>
-                <span className="text-sm bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                  {cartCount} items
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                    {cartCount} items
+                  </span>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => router.delete(route('cart.clear'))}
+                  >
+                    Clear All
+                  </Button>
+                </div>
               </div>
             </div>
 

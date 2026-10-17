@@ -22,6 +22,11 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+// Bundle Portal calls this endpoint directly; request signatures are verified
+// by InboundWebhookController, so it must be reachable without a browser session.
+Route::post('/bundleportal/orders', [\App\Http\Controllers\Api\InboundWebhookController::class, 'bundleportal'])
+    ->name('bundleportal.orders.webhook');
+
 Route::get('/become_an_agent', function () {
         $agentFee = \App\Models\Setting::get('agent_upgrade_fee', 30);
         return Inertia::render('become_an_agent', [
@@ -52,6 +57,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Cart routes
     Route::post('/add-to-cart', [CartController::class, 'store'])->name('add.to.cart');
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::delete('/cart', [CartController::class, 'clear'])->name('cart.clear');
     Route::delete('/cart/{cart}', [CartController::class, 'destroy'])->name('remove.from.cart');
     Route::post('/process-excel-to-cart', [CartController::class, 'processExcelToCart']);
     Route::post('/process-bulk-to-cart', [CartController::class, 'processBulkToCart']);
@@ -68,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->group(function () {
         Route::get('/dashboard', [AgentController::class, 'dashboard'])->name('dashboard');
         Route::get('/commissions', [AgentController::class, 'commissions'])->name('commissions');
+        Route::post('/commissions/{commissionId}/complete', [AgentController::class, 'completeCommission'])->name('commissions.complete');
         Route::get('/referrals', [AgentController::class, 'referrals'])->name('referrals');
         Route::get('/withdrawals', [AgentController::class, 'withdrawals'])->name('withdrawals');
         Route::get('/shop', [AgentController::class, 'shop'])->name('shop');
@@ -131,6 +138,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('toggle-successbizhub-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSuccessBizHubOrderPusher'])->name('toggle.successbizhub.order.pusher');
     Route::post('toggle-masternetgh-order-pusher', [\App\Http\Controllers\AdminDashboardController::class, 'toggleMasterNetGhOrderPusher'])->name('toggle.masternetgh.order.pusher');
     Route::post('bundleportal-mtn-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtnApi'])->name('bundleportal-mtn-api.toggle');
+    Route::post('bundleportal-mtn-2-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtn2Api'])->name('bundleportal-mtn-2-api.toggle');
+    Route::post('bundleportal-mtn-3-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtn3Api'])->name('bundleportal-mtn-3-api.toggle');
     Route::post('bundleportal-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalApi'])->name('bundleportal-api.toggle');
     
     // Alert routes
@@ -189,6 +198,7 @@ Route::get('/test-domain', function () {
 
 // Public shop routes
 Route::get('/shop/{slug}', [ShopController::class, 'show'])->name('shop.show');
+Route::post('/shop/{slug}/verify-number', [ShopController::class, 'verifyNumber'])->name('shop.verify-number');
 Route::post('/shop/{slug}/add-to-cart', [ShopController::class, 'addToCart'])->name('shop.add-to-cart');
 Route::get('/shop/{slug}/order-success/{order}', [ShopController::class, 'orderSuccess'])->name('shop.order-success');
 Route::match(['GET', 'POST'], '/shop/{slug}/track-order', [ShopController::class, 'findOrder'])->name('shop.find-order');

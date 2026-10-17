@@ -6,11 +6,52 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Services\MoolreSmsService;
+use App\Services\CommissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class InboundWebhookController extends Controller
 {
+    public function bundleportal(Request $request)
+    {
+        $secret = config('services.bundleportal.webhook_secret');
+        $signature = (string) $request->header('X-BundlePortal-Signature', '');
+        $expected = $secret ? 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret) : '';
+
+        if (!$secret || !$signature || !hash_equals($expected, $signature)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $payload = $request->json()->all();
+        $reference = $payload['reference'] ?? null;
+        $status = $payload['status'] ?? null;
+        if (!$reference || !$status) {
+            return response()->json(['message' => 'Missing reference or status'], 422);
+        }
+
+        $order = Order::where('bundleportal_reference_id', $reference)
+            ->orWhere('reference_id', $reference)
+            ->first();
+        if (!$order) {
+            Log::warning('Bundle Portal webhook order not found', ['reference' => $reference]);
+            // A 2xx prevents retries for a reference that is not in this application.
+            return response()->json(['message' => 'Order not found'], 200);
+        }
+
+        $newStatus = $this->mapStatus((string) $status, 'bundleportal');
+        if (!$newStatus || $newStatus === $order->status) {
+            return response()->json(['message' => 'Webhook already applied or status ignored'], 200);
+        }
+
+        $this->updateOrderStatus((string) $reference, (string) $status, 'bundleportal');
+        if ($newStatus === 'completed') {
+            (new CommissionService())->makeCommissionsAvailable($order);
+        } elseif (in_array($newStatus, ['cancelled', 'refunded'], true)) {
+            (new CommissionService())->reverseCommissions($order);
+        }
+        return response()->json(['message' => 'Webhook processed'], 200);
+    }
+
     public function masternetdatahub(Request $request)
     {
         $secret = config('services.webhooks.masternetdatahub');
@@ -59,14 +100,22 @@ class InboundWebhookController extends Controller
     {
         $secret = config('services.webhooks.skanka5');
 
-        if ($secret && !$this->verifySignature($request, $secret)) {
+        if (!$secret || !$this->verifyTskconnectSignature($request, $secret)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        Log::info('Skanka5 webhook received', ['payload' => $request->all()]);
+        $payload = $request->all();
+        $data = $payload['data'] ?? $payload;
+        $orderData = $data['order'] ?? [];
+        Log::info('Tskconnect webhook received', ['payload' => $payload]);
 
-        $referenceId = $request->input('reference_id') ?? $request->input('order_id');
-        $externalStatus = $request->input('status');
+        $referenceId = $data['externalReference']
+            ?? $data['reference']
+            ?? $data['reference_id']
+            ?? $orderData['externalReference']
+            ?? $request->input('reference_id')
+            ?? $request->input('order_id');
+        $externalStatus = $data['status'] ?? $orderData['status'] ?? $request->input('status');
 
         if (!$referenceId || !$externalStatus) {
             return response()->json(['message' => 'Missing reference_id or status'], 422);
@@ -77,11 +126,35 @@ class InboundWebhookController extends Controller
         return response()->json(['message' => 'Webhook processed'], 200);
     }
 
+    private function verifyTskconnectSignature(Request $request, string $secret): bool
+    {
+        $signature = (string) $request->header('X-Tskconnect-Signature', '');
+        $timestamp = (string) $request->header('X-Tskconnect-Timestamp', '');
+
+        if ($signature === '' || $timestamp === '') {
+            return false;
+        }
+
+        $signature = preg_replace('/^sha256=/', '', $signature);
+        $expected = hash_hmac('sha256', $timestamp . '.' . $request->getContent(), $secret);
+
+        return hash_equals($expected, $signature);
+    }
+
     private function updateOrderStatus(string $referenceId, string $externalStatus, string $source): void
     {
-        $order = Order::with(['user', 'products' => function ($query) {
+        $orderQuery = Order::with(['user', 'products' => function ($query) {
             $query->withPivot('product_variant_id');
-        }])->where('reference_id', $referenceId)->first();
+        }]);
+        if ($source === 'bundleportal') {
+            $orderQuery->where(function ($query) use ($referenceId) {
+                $query->where('bundleportal_reference_id', $referenceId)
+                    ->orWhere('reference_id', $referenceId);
+            });
+        } else {
+            $orderQuery->where('reference_id', $referenceId);
+        }
+        $order = $orderQuery->first();
 
         if (!$order) {
             Log::warning("Webhook order not found", ['reference_id' => $referenceId, 'source' => $source]);
@@ -134,6 +207,7 @@ class InboundWebhookController extends Controller
             'failed' => 'cancelled',
             'cancelled' => 'cancelled',
             'rejected' => 'cancelled',
+            'refunded' => 'cancelled',
         ];
 
         if ($source === 'masternetdatahub') {

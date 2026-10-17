@@ -12,23 +12,33 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Remove duplicates, keeping the earliest entry per phone_number
-        DB::statement('
-            DELETE u1 FROM unverified_numbers u1
-            INNER JOIN unverified_numbers u2
-            WHERE u1.id > u2.id AND u1.phone_number = u2.phone_number
-        ');
+        if (!Schema::hasTable('unverified_numbers')) {
+            return;
+        }
 
-        Schema::table('unverified_numbers', function (Blueprint $table) {
-            $table->unique('phone_number');
-        });
+        // The table-creation migration already adds this unique index on fresh installs.
+        if (!Schema::hasIndex('unverified_numbers', 'unverified_numbers_phone_number_unique', 'unique')) {
+            $hasDuplicates = DB::table('unverified_numbers')
+                ->select('phone_number')
+                ->groupBy('phone_number')
+                ->havingRaw('COUNT(*) > 1')
+                ->exists();
+
+            if ($hasDuplicates) {
+                throw new RuntimeException(
+                    'Cannot add the unique phone_number index: duplicate unverified_numbers rows exist. '
+                    . 'Resolve duplicates explicitly, then rerun migrations; no rows were deleted.'
+                );
+            }
+
+            Schema::table('unverified_numbers', function (Blueprint $table) {
+                $table->unique('phone_number');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('unverified_numbers', function (Blueprint $table) {
-            $table->dropUnique(['phone_number']);
-            $table->index('phone_number');
-        });
+        // The unique index is part of the original table schema and must remain in place.
     }
 };

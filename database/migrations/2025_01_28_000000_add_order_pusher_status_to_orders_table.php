@@ -11,9 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->enum('order_pusher_status', ['disabled', 'success', 'failed'])->default('disabled')->after('reference_id');
-        });
+        // The base orders table is created by a later migration on fresh installs.
+        if (Schema::hasTable('orders')
+            && Schema::hasColumn('orders', 'reference_id')
+            && !Schema::hasColumn('orders', 'order_pusher_status')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->enum('order_pusher_status', ['disabled', 'success', 'failed'])->default('disabled')->after('reference_id');
+            });
+        }
     }
 
     /**
@@ -21,8 +26,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn('order_pusher_status');
-        });
+        if (Schema::hasTable('orders') && Schema::hasColumn('orders', 'order_pusher_status')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropColumn('order_pusher_status');
+            });
+        }
     }
 };

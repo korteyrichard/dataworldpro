@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AFAController;
 use App\Http\Controllers\Api\InboundWebhookController;
 
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\NumberVerificationController;
 use App\Models\User;
 use App\Models\Webhook;
 
@@ -48,6 +49,9 @@ Route::prefix('v1')->group(function () {
 
     // 🔒 All routes inside here require Sanctum token
     Route::middleware('auth:sanctum')->group(function () {
+        // Check whether a beneficiary number can receive an order.
+        Route::post('/verify-number', [NumberVerificationController::class, 'verify']);
+
         // Test endpoint for debugging
         Route::post('/test-order', function (Request $request) {
             return response()->json([
@@ -232,6 +236,7 @@ Route::prefix('v1')->group(function () {
 
 // Inbound Webhooks (public - no auth, verified by secret)
 Route::prefix('webhook')->group(function () {
+    Route::post('/bundleportal', [InboundWebhookController::class, 'bundleportal']);
     Route::post('/masternetdatahub', [InboundWebhookController::class, 'masternetdatahub']);
     Route::post('/jessco', [InboundWebhookController::class, 'jessco']);
     Route::post('/skanka5', [InboundWebhookController::class, 'skanka5']);

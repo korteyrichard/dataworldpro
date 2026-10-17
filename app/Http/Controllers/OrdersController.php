@@ -19,7 +19,7 @@ use App\Services\CodeCraftMtnOrderPusherService;
 use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Services\MasterNetGhOrderPusherService;
-use App\Services\BundlePortalMtnOrderPusherService;
+use App\Services\BundlePortalMtnPusherDispatcher;
 use App\Services\BundlePortalOrderPusherService;
 use App\Models\Setting;
 use App\Models\VerifiedNumber;
@@ -231,15 +231,20 @@ class OrdersController extends Controller
             $dataflowEnabled = (bool) Setting::get('dataflow_order_pusher_enabled', 0);
             $masterNetEnabled = (bool) Setting::get('successbizhub_order_pusher_enabled', 0);
             $masterNetGhEnabled = (bool) Setting::get('masternetgh_order_pusher_enabled', 0);
-            $bundlePortalMtnEnabled = (bool) Setting::get('bundleportal_mtn_api_enabled', 0);
+            $bundlePortalMtnEnabled = (bool) Setting::get('bundleportal_mtn_api_enabled', 0)
+                || (bool) Setting::get('bundleportal_mtn_2_api_enabled', 0)
+                || (bool) Setting::get('bundleportal_mtn_3_api_enabled', 0);
             $bundlePortalEnabled = (bool) Setting::get('bundleportal_api_enabled', 0);
             
             foreach ($createdOrders as $order) {
                 try {
                     if (strtolower($order->network) === 'mtn') {
                         if ($bundlePortalMtnEnabled) {
-                            (new BundlePortalMtnOrderPusherService())->pushOrderToApi($order);
-                            Log::info('Order pushed to BundlePortal MTN API', ['orderId' => $order->id]);
+                            $pushed = (new BundlePortalMtnPusherDispatcher())->push($order);
+                            Log::log($pushed ? 'info' : 'warning', 'MTN Bundle Portal push finished', [
+                                'order_id' => $order->id,
+                                'submitted' => $pushed,
+                            ]);
                         } elseif ($codecraftMtnEnabled) {
                             (new CodeCraftMtnOrderPusherService())->pushOrderToApi($order);
                             Log::info('Order pushed to CodeCraft MTN API', ['orderId' => $order->id, 'network' => $order->network]);

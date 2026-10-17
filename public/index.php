@@ -1,5 +1,9 @@
 <?php
 
+// PHP 8.5 deprecates PDO::MYSQL_ATTR_SSL_CA in Laravel's database config.
+// Keep those notices out of HTTP responses while preserving other diagnostics.
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+
 // DOMAIN RESTRICTION - FORCE CHECK BEFORE LARAVEL LOADS
 $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
 $host = explode(':', $host)[0]; // Remove port

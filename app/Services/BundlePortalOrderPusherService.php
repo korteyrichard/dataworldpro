@@ -74,6 +74,7 @@ class BundlePortalOrderPusherService
                 if (!empty($data['success']) && !empty($data['data']['reference'])) {
                     $order->update([
                         'reference_id'       => $data['data']['reference'],
+                        'bundleportal_reference_id' => $data['data']['reference'],
                         'order_pusher_status' => 'success',
                     ]);
                 } else {

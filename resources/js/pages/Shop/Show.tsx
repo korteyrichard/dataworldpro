@@ -40,6 +40,8 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
     const [selectedNetwork, setSelectedNetwork] = useState('MTN');
     const [email, setEmail] = useState('');
     const [beneficiaryNumber, setBeneficiaryNumber] = useState('');
+    const [numberVerification, setNumberVerification] = useState<{ network: string; number: string; allowed: boolean; message: string } | null>(null);
+    const [verifyingNumber, setVerifyingNumber] = useState(false);
     const [bundleSize, setBundleSize] = useState('');
     const [loading, setLoading] = useState(false);
     const [showTrackModal, setShowTrackModal] = useState(false);
@@ -127,7 +129,37 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
     const handleNetworkChange = (networkId: string) => {
         setSelectedNetwork(networkId);
         setBundleSize('');
+        setNumberVerification(null);
         fetchBundleSizes(networkId);
+    };
+
+    const handleVerifyNumber = async () => {
+        if (!/^\d{10}$/.test(beneficiaryNumber)) return;
+        setVerifyingNumber(true);
+        setNumberVerification(null);
+        try {
+            const response = await fetch(`/shop/${encodeURIComponent(shop?.slug || '')}/verify-number`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ beneficiary_number: beneficiaryNumber, network: selectedNetwork }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Could not verify this number.');
+            setNumberVerification({ network: selectedNetwork, number: beneficiaryNumber, allowed: result.allowed, message: result.message });
+        } catch (error) {
+            setNumberVerification({
+                network: selectedNetwork,
+                number: beneficiaryNumber,
+                allowed: false,
+                message: error instanceof Error ? error.message : 'Could not verify this number.',
+            });
+        } finally {
+            setVerifyingNumber(false);
+        }
     };
 
     useEffect(() => {
@@ -136,7 +168,7 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
 
     const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!email || !beneficiaryNumber || !bundleSize) return;
+        if (!email || !beneficiaryNumber || !bundleSize || !numberVerification?.allowed || numberVerification.number !== beneficiaryNumber || numberVerification.network !== selectedNetwork) return;
         
         setLoading(true);
         
@@ -411,6 +443,7 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
                                             onChange={(e) => {
                                                 const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                                                 setBeneficiaryNumber(value);
+                                                setNumberVerification(null);
                                             }}
                                             maxLength={10}
                                             pattern="[0-9]{10}"
@@ -420,6 +453,21 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
                                         {beneficiaryNumber && beneficiaryNumber.length !== 10 && (
                                             <p className="text-red-500 text-xs mt-1">Phone number must be exactly 10 digits</p>
                                         )}
+                                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                                            <Button
+                                                type="button"
+                                                onClick={handleVerifyNumber}
+                                                disabled={verifyingNumber || beneficiaryNumber.length !== 10}
+                                                className={`border-0 text-white ${getNetworkButtonColors(selectedNetwork)}`}
+                                            >
+                                                {verifyingNumber ? 'Checking...' : 'Verify Number'}
+                                            </Button>
+                                            {numberVerification && numberVerification.number === beneficiaryNumber && numberVerification.network === selectedNetwork && (
+                                                <span className={`text-sm ${numberVerification.allowed ? 'text-green-600' : 'text-red-600'}`} role="status">
+                                                    {numberVerification.message}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -457,7 +505,7 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
 
                                 <Button 
                                     type="submit" 
-                                    disabled={loading || !email || beneficiaryNumber.length !== 10 || !bundleSize}
+                                    disabled={loading || !email || beneficiaryNumber.length !== 10 || !bundleSize || !numberVerification?.allowed || numberVerification.number !== beneficiaryNumber || numberVerification.network !== selectedNetwork}
                                     className={`w-full text-white py-3 ${getNetworkButtonColors(selectedNetwork)}`}
                                 >
                                     <ShoppingCart className="h-4 w-4 mr-2" />

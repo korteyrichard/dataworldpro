@@ -19,7 +19,7 @@ use App\Services\CodeCraftMtnOrderPusherService;
 use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Services\MasterNetGhOrderPusherService;
-use App\Services\BundlePortalMtnOrderPusherService;
+use App\Services\BundlePortalMtnPusherDispatcher;
 use App\Services\BundlePortalOrderPusherService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
@@ -139,8 +139,10 @@ class OrderController extends Controller
         // Push order to external API based on network (if enabled)
         try {
             if (strtolower($order->network) === 'mtn') {
-                if (Setting::get('bundleportal_mtn_api_enabled', 0)) {
-                    (new BundlePortalMtnOrderPusherService())->pushOrderToApi($order);
+                if (Setting::get('bundleportal_mtn_api_enabled', 0)
+                    || Setting::get('bundleportal_mtn_2_api_enabled', 0)
+                    || Setting::get('bundleportal_mtn_3_api_enabled', 0)) {
+                    (new BundlePortalMtnPusherDispatcher())->push($order);
                 } elseif (Setting::get('codecraft_mtn_order_pusher_enabled', 1)) {
                     (new CodeCraftMtnOrderPusherService())->pushOrderToApi($order);
                 } elseif (Setting::get('dataflow_order_pusher_enabled', 0)) {

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Order;
+use App\Models\Commission;
 use App\Models\Transaction;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -47,6 +48,8 @@ class AdminDashboardController extends Controller
             'masterNetOrderPusherEnabled' => (bool) Setting::get('successbizhub_order_pusher_enabled', 0),
             'masterNetGhOrderPusherEnabled' => (bool) Setting::get('masternetgh_order_pusher_enabled', 0),
             'bundlePortalMtnApiEnabled'      => (bool) Setting::get('bundleportal_mtn_api_enabled', 0),
+            'bundlePortalMtn2ApiEnabled'     => (bool) Setting::get('bundleportal_mtn_2_api_enabled', 0),
+            'bundlePortalMtn3ApiEnabled'     => (bool) Setting::get('bundleportal_mtn_3_api_enabled', 0),
             'bundlePortalApiEnabled'         => (bool) Setting::get('bundleportal_api_enabled', 0),
         ]);
     }
@@ -218,27 +221,30 @@ class AdminDashboardController extends Controller
         if ($request->status === 'cancelled' && $oldStatus !== 'cancelled') {
             $user = $order->user;
             $refundAmount = $order->total;
-            
-            $balanceBefore = $user->wallet_balance;
-            // Add refund to user's wallet
-            $user->increment('wallet_balance', $refundAmount);
-            
-            // Create refund transaction record
-            Transaction::create([
-                'user_id' => $user->id,
-                'order_id' => $order->id,
-                'amount' => $refundAmount,
-                'balance_before' => $balanceBefore,
-                'balance_after' => $balanceBefore + $refundAmount,
-                'status' => 'completed',
-                'type' => 'refund',
-                'description' => "Refund for cancelled order #{$order->id}",
-            ]);
+
+            if ($this->isShopOrder($order)) {
+                $this->creditShopCancellationToCommissions($order, (float) $refundAmount);
+            } else {
+                $balanceBefore = $user->wallet_balance;
+                $user->increment('wallet_balance', $refundAmount);
+
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'order_id' => $order->id,
+                    'amount' => $refundAmount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceBefore + $refundAmount,
+                    'status' => 'completed',
+                    'type' => 'refund',
+                    'description' => "Refund for cancelled order #{$order->id}",
+                ]);
+            }
             
             // Send SMS notification for refund
             if ($user->phone) {
                 $smsService = new MoolreSmsService();
-                $message = "Your order #{$order->id} has been cancelled and GHS " . number_format($refundAmount, 2) . " has been refunded to your wallet.";
+                $destination = $this->isShopOrder($order) ? 'your commissions' : 'your wallet';
+                $message = "Your order #{$order->id} has been cancelled and GHS " . number_format($refundAmount, 2) . " has been credited to {$destination}.";
                 $smsService->sendSms($user->phone, $message);
             }
         }
@@ -285,26 +291,31 @@ class AdminDashboardController extends Controller
                 if ($order->status !== 'cancelled') {
                     $user = $order->user;
                     $refundAmount = $order->total;
-                    
-                    $balanceBefore = $user->wallet_balance;
-                    // Add refund to user's wallet
-                    $user->increment('wallet_balance', $refundAmount);
-                    
-                    // Create refund transaction record
-                    Transaction::create([
-                        'user_id' => $user->id,
-                        'order_id' => $order->id,
-                        'amount' => $refundAmount,
-                        'balance_before' => $balanceBefore,
-                        'balance_after' => $balanceBefore + $refundAmount,
-                        'status' => 'completed',
-                        'type' => 'refund',
-                        'description' => "Refund for cancelled order #{$order->id}",
-                    ]);
+
+                    if ($this->isShopOrder($order)) {
+                        // Bulk status updates bypass model observers.
+                        app(\App\Services\CommissionService::class)->reverseCommissions($order);
+                        $this->creditShopCancellationToCommissions($order, (float) $refundAmount);
+                    } else {
+                        $balanceBefore = $user->wallet_balance;
+                        $user->increment('wallet_balance', $refundAmount);
+
+                        Transaction::create([
+                            'user_id' => $user->id,
+                            'order_id' => $order->id,
+                            'amount' => $refundAmount,
+                            'balance_before' => $balanceBefore,
+                            'balance_after' => $balanceBefore + $refundAmount,
+                            'status' => 'completed',
+                            'type' => 'refund',
+                            'description' => "Refund for cancelled order #{$order->id}",
+                        ]);
+                    }
                     
                     // Send SMS notification for refund
                     if ($user->phone) {
-                        $message = "Your order #{$order->id} has been cancelled and GHS " . number_format($refundAmount, 2) . " has been refunded to your wallet.";
+                        $destination = $this->isShopOrder($order) ? 'your commissions' : 'your wallet';
+                        $message = "Your order #{$order->id} has been cancelled and GHS " . number_format($refundAmount, 2) . " has been credited to {$destination}.";
                         $smsService->sendSms($user->phone, $message);
                     }
                 }
@@ -331,6 +342,34 @@ class AdminDashboardController extends Controller
         }
 
         return redirect()->back()->with('success', "Updated {$updatedCount} order(s) successfully.");
+    }
+
+    private function isShopOrder(Order $order): bool
+    {
+        return $order->order_source === 'shop' || (bool) $order->is_guest_order;
+    }
+
+    private function creditShopCancellationToCommissions(Order $order, float $amount): void
+    {
+        $product = $order->products()->first();
+        $agentId = $order->agent_id ?? $order->user_id;
+
+        if (!$product || !$agentId) {
+            throw new \RuntimeException("Cannot credit cancelled shop order #{$order->id} to commissions without an agent and product.");
+        }
+
+        Commission::create([
+            'agent_id' => $agentId,
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $product->pivot->product_variant_id,
+            'base_price' => 0,
+            'agent_price' => $amount,
+            'commission_amount' => $amount,
+            'quantity' => 1,
+            'status' => 'available',
+            'available_at' => now(),
+        ]);
     }
 
     /**
@@ -780,7 +819,7 @@ class AdminDashboardController extends Controller
     public function updateAfaOrderStatus(Request $request, \App\Models\AFAOrders $order)
     {
         $request->validate([
-            'status' => 'required|string|in:PENDING,COMPLETED,CANCELLED',
+            'status' => 'required|string|in:PENDING,PROCESSING,COMPLETED,CANCELLED',
         ]);
 
         $order->update(['status' => $request->status]);
@@ -918,6 +957,22 @@ class AdminDashboardController extends Controller
 
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "Bundle Portal MTN order pusher {$status} successfully.");
+    }
+
+    public function toggleBundlePortalMtn2Api(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('bundleportal_mtn_2_api_enabled', $enabled ? '1' : '0');
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Bundle Portal MTN 2 order pusher {$status} successfully.");
+    }
+
+    public function toggleBundlePortalMtn3Api(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('bundleportal_mtn_3_api_enabled', $enabled ? '1' : '0');
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Bundle Portal MTN 3 order pusher {$status} successfully.");
     }
 
     /**

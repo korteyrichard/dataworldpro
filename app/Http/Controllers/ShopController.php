@@ -18,7 +18,7 @@ use App\Services\CodeCraftMtnOrderPusherService;
 use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Services\MasterNetGhOrderPusherService;
-use App\Services\BundlePortalMtnOrderPusherService;
+use App\Services\BundlePortalMtnPusherDispatcher;
 use App\Services\BundlePortalOrderPusherService;
 use App\Services\PreviousOrderRestrictionService;
 use Illuminate\Http\Request;
@@ -45,6 +45,40 @@ class ShopController extends Controller
                 'phone' => $shop->user->phone
             ],
             'trackOrderVideoUrl' => Setting::get('track_order_video_url', '')
+        ]);
+    }
+
+    public function verifyNumber(Request $request, string $slug)
+    {
+        UserShop::where('slug', $slug)->where('is_active', true)->firstOrFail();
+
+        $validated = $request->validate([
+            'beneficiary_number' => ['required', 'string', 'regex:/^\\d{10}$/'],
+            'network' => ['required', 'in:MTN,TELECEL,ISHARE,BIGTIME'],
+        ]);
+
+        $number = $validated['beneficiary_number'];
+        $network = $validated['network'];
+        $isMtn = strtolower($network) === 'mtn';
+        $checks = [
+            'verified_number' => !$isMtn || VerifiedNumber::isAllowed($number),
+            'previous_order' => !$isMtn || PreviousOrderRestrictionService::isAllowed($number, $network),
+        ];
+        $allowed = !in_array(false, $checks, true);
+        $failures = [];
+        if (!$checks['verified_number']) {
+            $failures[] = 'This number is not currently verified.';
+        }
+        if (!$checks['previous_order']) {
+            $failures[] = 'This number must have placed an order before.';
+        }
+
+        return response()->json([
+            'allowed' => $allowed,
+            'checks' => $checks,
+            'message' => $allowed
+                ? 'This number can receive orders.'
+                : implode(' ', $failures),
         ]);
     }
 
@@ -287,7 +321,8 @@ class ShopController extends Controller
                         'agent_price' => $agentProduct->agent_price,
                         'commission_amount' => $agentProduct->commission_amount,
                         'quantity' => 1,
-                        'status' => 'available'
+                        'status' => 'available',
+                        'available_at' => now()
                     ]);
                 }
 
@@ -645,13 +680,18 @@ class ShopController extends Controller
             $easydataEnabled = (bool) Setting::get('easydata_order_pusher_enabled', 1);
             $skanka5Enabled = (bool) Setting::get('skanka5_order_pusher_enabled', 1);
             $skanka5TelecelEnabled = (bool) Setting::get('skanka5_telecel_order_pusher_enabled', 1);
-            $bundlePortalMtnEnabled = (bool) Setting::get('bundleportal_mtn_api_enabled', 0);
+            $bundlePortalMtnEnabled = (bool) Setting::get('bundleportal_mtn_api_enabled', 0)
+                || (bool) Setting::get('bundleportal_mtn_2_api_enabled', 0)
+                || (bool) Setting::get('bundleportal_mtn_3_api_enabled', 0);
             $bundlePortalEnabled = (bool) Setting::get('bundleportal_api_enabled', 0);
             
             if (strtolower($order->network) === 'mtn') {
                 if ($bundlePortalMtnEnabled) {
-                    (new BundlePortalMtnOrderPusherService())->pushOrderToApi($order);
-                    \Log::info('Order pushed to BundlePortal MTN API', ['orderId' => $order->id]);
+                    $pushed = (new BundlePortalMtnPusherDispatcher())->push($order);
+                    \Log::log($pushed ? 'info' : 'warning', 'Shop MTN Bundle Portal push finished', [
+                        'order_id' => $order->id,
+                        'submitted' => $pushed,
+                    ]);
                 } elseif ($codecraftMtnEnabled) {
                     $codeCraftMtnOrderPusher = new CodeCraftMtnOrderPusherService();
                     $codeCraftMtnOrderPusher->pushOrderToApi($order);

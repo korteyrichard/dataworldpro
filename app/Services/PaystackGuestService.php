@@ -16,7 +16,7 @@ use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Services\MasterNetGhOrderPusherService;
 use App\Services\BundlePortalOrderPusherService;
-use App\Services\BundlePortalMtnOrderPusherService;
+use App\Services\BundlePortalMtnPusherDispatcher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -211,7 +211,8 @@ class PaystackGuestService
                         'agent_price' => $agentProduct->agent_price,
                         'commission_amount' => $agentProduct->commission_amount,
                         'quantity' => 1,
-                        'status' => 'pending'
+                        'status' => 'available',
+                        'available_at' => now()
                     ]);
                 }
 
@@ -245,9 +246,14 @@ class PaystackGuestService
     {
         try {
             if (strtolower($order->network) === 'mtn') {
-                if ((bool) Setting::get('bundleportal_mtn_api_enabled', 0)) {
-                    (new BundlePortalMtnOrderPusherService())->pushOrderToApi($order);
-                    \Log::info('Order pushed to BundlePortal MTN API', ['orderId' => $order->id]);
+                if ((bool) Setting::get('bundleportal_mtn_api_enabled', 0)
+                    || (bool) Setting::get('bundleportal_mtn_2_api_enabled', 0)
+                    || (bool) Setting::get('bundleportal_mtn_3_api_enabled', 0)) {
+                    $pushed = (new BundlePortalMtnPusherDispatcher())->push($order);
+                    \Log::log($pushed ? 'info' : 'warning', 'Shop MTN Bundle Portal push finished', [
+                        'order_id' => $order->id,
+                        'submitted' => $pushed,
+                    ]);
                 } elseif ((bool) Setting::get('codecraft_mtn_order_pusher_enabled', 1)) {
                     (new CodeCraftMtnOrderPusherService())->pushOrderToApi($order);
                     \Log::info('Order pushed to CodeCraft MTN API', ['orderId' => $order->id, 'network' => $order->network]);
