@@ -780,8 +780,23 @@ class AdminDashboardController extends Controller
                         $volume = $product->pivot->quantity ?? 0;
                     }
                     
+                    $beneficiaryNumber = (string) (
+                        $product->pivot->beneficiary_number
+                        ?? $order->beneficiary_number
+                        ?? 'N/A'
+                    );
+                    // Older records may have been stored after a numeric conversion removed the zero.
+                    if (preg_match('/^\d{9}$/', $beneficiaryNumber)) {
+                        $beneficiaryNumber = '0' . $beneficiaryNumber;
+                    }
+
+                    // Excel otherwise treats phone numbers as numbers and drops the leading zero.
+                    if (preg_match('/^0\d+$/', $beneficiaryNumber)) {
+                        $beneficiaryNumber = '="' . $beneficiaryNumber . '"';
+                    }
+
                     fputcsv($file, [
-                        $product->pivot->beneficiary_number ?? 'N/A',
+                        $beneficiaryNumber,
                         $volume
                     ]);
                 }
@@ -790,6 +805,123 @@ class AdminDashboardController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export selected orders as an Excel workbook with beneficiary numbers stored as text.
+     */
+    public function exportOrdersExcel(Request $request)
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array|min:1',
+            'order_ids.*' => 'exists:orders,id',
+        ]);
+
+        $rows = $this->getOrderExportRows($validated['order_ids']);
+        $sheetRows = [];
+        $sheetRows[] = '<row r="1"><c r="A1" t="inlineStr"><is><t>Number</t></is></c><c r="B1" t="inlineStr"><is><t>Volume</t></is></c></row>';
+
+        foreach ($rows as $index => [$beneficiaryNumber, $volume]) {
+            $rowNumber = $index + 2;
+            $numberXml = htmlspecialchars((string) $beneficiaryNumber, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+            $volumeXml = htmlspecialchars((string) $volume, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+            $numberCell = preg_match('/^0\d{9}$/', (string) $beneficiaryNumber)
+                ? '<c r="A' . $rowNumber . '" s="1"><v>' . substr((string) $beneficiaryNumber, 1) . '</v></c>'
+                : '<c r="A' . $rowNumber . '" t="inlineStr"><is><t>' . $numberXml . '</t></is></c>';
+            $volumeCell = is_numeric($volume)
+                ? '<c r="B' . $rowNumber . '"><v>' . $volumeXml . '</v></c>'
+                : '<c r="B' . $rowNumber . '" t="inlineStr"><is><t>' . $volumeXml . '</t></is></c>';
+
+            // The custom number format preserves the leading zero even in viewers that coerce text to numbers.
+            $sheetRows[] = '<row r="' . $rowNumber . '">' . $numberCell . $volumeCell . '</row>';
+        }
+
+        $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>' . implode('', $sheetRows) . '</sheetData></worksheet>';
+        $workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets><sheet name="Orders" sheetId="1" r:id="rId1"/></sheets></workbook>';
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'orders_');
+        $zip = new \ZipArchive();
+        if ($tempFile === false || $zip->open($tempFile, \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Unable to create the Excel export file.');
+        }
+
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            . '</Types>');
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/workbook.xml', $workbookXml);
+        $zip->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<numFmts count="1"><numFmt numFmtId="164" formatCode="0000000000"/></numFmts>'
+            . '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+            . '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+            . '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+            . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            . '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            . '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>'
+            . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+            . '</styleSheet>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/worksheets/sheet1.xml', $sheetXml);
+        $zip->close();
+
+        $filename = 'orders_' . date('Y-m-d_H-i-s') . '.xlsx';
+        return response()->download($tempFile, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /** Build the shared Number and Volume rows for CSV and Excel exports. */
+    private function getOrderExportRows(array $orderIds): array
+    {
+        $orders = Order::with(['products' => function ($query) {
+            $query->withPivot('quantity', 'beneficiary_number', 'product_variant_id');
+        }])->whereIn('id', $orderIds)->get();
+
+        $rows = [];
+        foreach ($orders as $order) {
+            foreach ($order->products as $product) {
+                $volume = 0;
+                if ($product->pivot->product_variant_id) {
+                    $variant = ProductVariant::find($product->pivot->product_variant_id);
+                    if ($variant && isset($variant->variant_attributes['size'])) {
+                        $volume = preg_replace('/gb/i', '', $variant->variant_attributes['size']);
+                    }
+                }
+                if (!$volume) {
+                    $volume = $product->pivot->quantity ?? 0;
+                }
+
+                $beneficiaryNumber = (string) (
+                    $product->pivot->beneficiary_number
+                    ?? $order->beneficiary_number
+                    ?? 'N/A'
+                );
+                if (preg_match('/^\d{9}$/', $beneficiaryNumber)) {
+                    $beneficiaryNumber = '0' . $beneficiaryNumber;
+                }
+
+                $rows[] = [$beneficiaryNumber, $volume];
+            }
+        }
+
+        return $rows;
     }
 
     /**

@@ -121,6 +121,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('transactions', [\App\Http\Controllers\AdminDashboardController::class, 'transactions'])->name('transactions');
     Route::get('users/{user}/transactions', [\App\Http\Controllers\AdminDashboardController::class, 'userTransactions'])->name('users.transactions');
     Route::post('orders/export', [\App\Http\Controllers\AdminDashboardController::class, 'exportOrders'])->name('orders.export');
+    Route::post('orders/export-excel', [\App\Http\Controllers\AdminDashboardController::class, 'exportOrdersExcel'])->name('orders.exportExcel');
     Route::get('afa-orders', [\App\Http\Controllers\AdminDashboardController::class, 'afaOrders'])->name('afa-orders');
     Route::put('afa-orders/{order}/status', [\App\Http\Controllers\AdminDashboardController::class, 'updateAfaOrderStatus'])->name('afa.orders.updateStatus');
     Route::get('afa-products', [\App\Http\Controllers\AdminDashboardController::class, 'afaProducts'])->name('afa-products');

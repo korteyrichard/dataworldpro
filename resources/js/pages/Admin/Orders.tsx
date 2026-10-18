@@ -266,33 +266,78 @@ export default function AdminOrders() {
                   Update
                 </button>
                 <button
-                  onClick={() => {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = route('admin.orders.export');
-                    form.style.display = 'none';
-                    
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = '_token';
-                    csrfInput.value = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                    form.appendChild(csrfInput);
-                    
-                    selectedOrders.forEach(orderId => {
-                      const input = document.createElement('input');
-                      input.type = 'hidden';
-                      input.name = 'order_ids[]';
-                      input.value = orderId.toString();
-                      form.appendChild(input);
+                  onClick={async () => {
+                    const xsrfCookie = document.cookie
+                      .split('; ')
+                      .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+                      ?.slice('XSRF-TOKEN='.length);
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const body = new URLSearchParams();
+                    selectedOrders.forEach(orderId => body.append('order_ids[]', orderId.toString()));
+                    if (!xsrfCookie) body.append('_token', csrfToken);
+
+                    const response = await fetch(route('admin.orders.export'), {
+                      method: 'POST',
+                      credentials: 'same-origin',
+                      headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        ...(xsrfCookie ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrfCookie) } : {}),
+                      },
+                      body,
                     });
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                    document.body.removeChild(form);
+
+                    if (!response.ok) {
+                      throw new Error('Unable to export orders. Please refresh the page and try again.');
+                    }
+
+                    const blob = await response.blob();
+                    const downloadUrl = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = response.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/i)?.[1] || 'orders.csv';
+                    link.click();
+                    URL.revokeObjectURL(downloadUrl);
                   }}
                   className="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
                 >
                   Export CSV
+                </button>
+                <button
+                  onClick={async () => {
+                    const xsrfCookie = document.cookie
+                      .split('; ')
+                      .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+                      ?.slice('XSRF-TOKEN='.length);
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const body = new URLSearchParams();
+                    selectedOrders.forEach(orderId => body.append('order_ids[]', orderId.toString()));
+                    if (!xsrfCookie) body.append('_token', csrfToken);
+
+                    const response = await fetch(route('admin.orders.exportExcel'), {
+                      method: 'POST',
+                      credentials: 'same-origin',
+                      headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        ...(xsrfCookie ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrfCookie) } : {}),
+                      },
+                      body,
+                    });
+
+                    if (!response.ok) {
+                      throw new Error('Unable to export orders. Please refresh the page and try again.');
+                    }
+
+                    const blob = await response.blob();
+                    const downloadUrl = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = response.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/i)?.[1] || 'orders.xlsx';
+                    link.click();
+                    URL.revokeObjectURL(downloadUrl);
+                  }}
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+                >
+                  Export Excel
                 </button>
               </div>
             </div>
