@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class JescoOrderPusherService
 {
+    protected bool $expressOnly = false;
     private $baseUrl;
     private $apiKey;
 
@@ -17,23 +18,29 @@ class JescoOrderPusherService
         $this->apiKey = config('services.jesco.api_key');
     }
 
-    public function pushOrderToApi(Order $order)
+    public function pushOrderToApi(Order $order): bool
     {
         Log::info('Processing MTN order for Jesco API push', ['order_id' => $order->id]);
         
         // Only process MTN orders
         if (strtolower($order->network) !== 'mtn') {
             Log::info('Skipping non-MTN order for Jesco service', ['order_id' => $order->id, 'network' => $order->network]);
-            return;
+            return false;
         }
         
         $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
         Log::info('Order has items', ['count' => $items->count()]);
         
         $processedItems = 0;
+        $successfulItems = 0;
 
         foreach ($items as $item) {
             Log::info('Processing item', ['name' => $item->name]);
+
+            $isExpressProduct = strcasecmp(trim($item->name), 'mtn express') === 0;
+            if ($this->expressOnly !== $isExpressProduct || stripos($item->name, 'mtn') === false) {
+                continue;
+            }
             
             $beneficiaryPhone = $item->pivot->beneficiary_number;
             $variant = \App\Models\ProductVariant::find($item->pivot->product_variant_id);
@@ -70,8 +77,7 @@ class JescoOrderPusherService
                     'variant_attributes' => $variant->variant_attributes,
                     'note' => 'Jesco package mapping needs to be configured with valid package IDs'
                 ]);
-                // Mark order as disabled since we cannot process it
-                $order->update(['order_pusher_status' => 'disabled']);
+                $order->update(['order_pusher_status' => 'failed']);
                 continue;
             }
             
@@ -129,8 +135,10 @@ class JescoOrderPusherService
                                 'order_id' => $order->id,
                                 'jesco_purchase_id' => $jescoPurchaseId
                             ]);
+                            $successfulItems++;
                         } else {
                             $order->update(['order_pusher_status' => 'success']);
+                            $successfulItems++;
                             Log::info('Jesco purchase successful but no purchase ID found');
                         }
                     } else {
@@ -183,6 +191,8 @@ class JescoOrderPusherService
         if ($processedItems === 0) {
             Log::info('No items were processed for Jesco order, keeping status as disabled', ['order_id' => $order->id]);
         }
+
+        return $successfulItems > 0;
     }
     
     private function formatPhone($phone)

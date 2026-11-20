@@ -275,9 +275,13 @@ class DashboardController extends Controller
         ];
         $productType = $productTypeMap[$user->role] ?? 'agent_product';
         
-        $product = Product::where('network', $network)
-            ->where('product_type', $productType)
-            ->first();
+        $productQuery = Product::where('product_type', $productType);
+        if (strtoupper($network) === 'MTN_EXPRESS') {
+            $productQuery->where('network', 'MTN')->whereRaw('LOWER(TRIM(name)) = ?', ['mtn express']);
+        } else {
+            $productQuery->where('network', $network)->whereRaw('LOWER(TRIM(name)) != ?', ['mtn express']);
+        }
+        $product = $productQuery->first();
         
         if (!$product) {
             return response()->json(['success' => false, 'message' => 'Product not found']);

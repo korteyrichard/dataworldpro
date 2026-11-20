@@ -245,6 +245,15 @@ class PaystackGuestService
     private function pushOrderToExternalApis(Order $order)
     {
         try {
+            if (BundlePortalMtnExpressPusherDispatcher::isExpressOrder($order)) {
+                $pushed = (new MtnExpressPusherDispatcher())->push($order);
+                \Log::log($pushed ? 'info' : 'warning', 'Guest MTN Express provider dispatch finished', [
+                    'order_id' => $order->id,
+                    'submitted' => $pushed,
+                ]);
+                return;
+            }
+
             if (strtolower($order->network) === 'mtn') {
                 if ((bool) Setting::get('bundleportal_mtn_api_enabled', 0)
                     || (bool) Setting::get('bundleportal_mtn_2_api_enabled', 0)

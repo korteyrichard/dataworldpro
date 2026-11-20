@@ -47,6 +47,12 @@ interface AdminDashboardProps extends PageProps {
   bundlePortalMtnApiEnabled: boolean;
   bundlePortalMtn2ApiEnabled: boolean;
   bundlePortalMtn3ApiEnabled: boolean;
+  bundlePortalMtnExpressApiEnabled: boolean;
+  bundlePortalMtnExpress2ApiEnabled: boolean;
+  bundlePortalMtnExpress3ApiEnabled: boolean;
+  jescoMtnExpressOrderPusherEnabled: boolean;
+  skanka5MtnExpressOrderPusherEnabled: boolean;
+  masterNetGhMtnExpressOrderPusherEnabled: boolean;
   bundlePortalApiEnabled: boolean;
 }
 
@@ -72,6 +78,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   bundlePortalMtnApiEnabled,
   bundlePortalMtn2ApiEnabled,
   bundlePortalMtn3ApiEnabled,
+  bundlePortalMtnExpressApiEnabled,
+  bundlePortalMtnExpress2ApiEnabled,
+  bundlePortalMtnExpress3ApiEnabled,
+  jescoMtnExpressOrderPusherEnabled,
+  skanka5MtnExpressOrderPusherEnabled,
+  masterNetGhMtnExpressOrderPusherEnabled,
   bundlePortalApiEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
@@ -155,6 +167,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const toggleBundlePortalMtn3Api = () => {
     router.post(route('admin.bundleportal-mtn-3-api.toggle'), { enabled: !bundlePortalMtn3ApiEnabled });
   };
+
+  const toggleBundlePortalMtnExpressApi = () => {
+    router.post(route('admin.bundleportal-mtn-express-api.toggle'), { enabled: !bundlePortalMtnExpressApiEnabled });
+  };
+
+  const toggleBundlePortalMtnExpress2Api = () => {
+    router.post(route('admin.bundleportal-mtn-express-2-api.toggle'), { enabled: !bundlePortalMtnExpress2ApiEnabled });
+  };
+
+  const toggleBundlePortalMtnExpress3Api = () => {
+    router.post(route('admin.bundleportal-mtn-express-3-api.toggle'), { enabled: !bundlePortalMtnExpress3ApiEnabled });
+  };
+
+  const toggleJescoMtnExpress = () => router.post(route('admin.jesco-mtn-express-order-pusher.toggle'), { enabled: !jescoMtnExpressOrderPusherEnabled });
+  const toggleSkanka5MtnExpress = () => router.post(route('admin.skanka5-mtn-express-order-pusher.toggle'), { enabled: !skanka5MtnExpressOrderPusherEnabled });
+  const toggleMasterNetGhMtnExpress = () => router.post(route('admin.masternetgh-mtn-express-order-pusher.toggle'), { enabled: !masterNetGhMtnExpressOrderPusherEnabled });
 
   return (
     <AdminLayout
@@ -479,6 +507,48 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Bundle Portal MTN Express routes */}
+            {[
+              { title: 'Bundle Portal MTN Express Order Pusher (mtn)', enabled: bundlePortalMtnExpressApiEnabled, toggle: toggleBundlePortalMtnExpressApi },
+              { title: 'Bundle Portal MTN Express 2 Order Pusher (mtn_2)', enabled: bundlePortalMtnExpress2ApiEnabled, toggle: toggleBundlePortalMtnExpress2Api },
+              { title: 'Bundle Portal MTN Express 3 Order Pusher (mtn_3)', enabled: bundlePortalMtnExpress3ApiEnabled, toggle: toggleBundlePortalMtnExpress3Api },
+            ].map((route) => (
+              <div key={route.title} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">{route.title}</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-300">
+                      {route.enabled ? 'MTN Express orders can use this route' : 'This MTN Express route is disabled'}
+                    </p>
+                  </div>
+                  <button type="button" aria-label={`Toggle ${route.title}`} aria-pressed={route.enabled} onClick={route.toggle} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${route.enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${route.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Additional MTN Express provider pushers */}
+            {[
+              { title: 'Jesco MTN Express Order Pusher', enabled: jescoMtnExpressOrderPusherEnabled, toggle: toggleJescoMtnExpress },
+              { title: 'Skanka5 MTN Express Order Pusher', enabled: skanka5MtnExpressOrderPusherEnabled, toggle: toggleSkanka5MtnExpress },
+              { title: 'MasterNetGh MTN Express Order Pusher', enabled: masterNetGhMtnExpressOrderPusherEnabled, toggle: toggleMasterNetGhMtnExpress },
+            ].map((provider) => (
+              <div key={provider.title} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">{provider.title}</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-300">
+                      {provider.enabled ? 'MTN Express orders are being sent to this API' : 'This MTN Express API pusher is disabled'}
+                    </p>
+                  </div>
+                  <button type="button" aria-label={`Toggle ${provider.title}`} aria-pressed={provider.enabled} onClick={provider.toggle} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${provider.enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${provider.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+            ))}
 
             {/* Bundle Portal Order Pusher (Telecel/AT/Ishare) */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">

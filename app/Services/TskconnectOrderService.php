@@ -17,7 +17,7 @@ class TskconnectOrderService
         $this->apiKey = (string) config('services.skanka5.api_key', '');
     }
 
-    public function submitOrder(Order $order, string $network): bool
+    public function submitOrder(Order $order, string $network, bool $expressOnly = false): bool
     {
         if ($this->apiKey === '') {
             Log::error('Tskconnect order submission skipped: API key is missing', ['order_id' => $order->id]);
@@ -32,6 +32,11 @@ class TskconnectOrderService
 
         foreach ($items as $item) {
             if (strtoupper((string) $item->network) !== strtoupper($network)) {
+                continue;
+            }
+
+            $isExpressProduct = strcasecmp(trim($item->name), 'mtn express') === 0;
+            if ($expressOnly !== $isExpressProduct) {
                 continue;
             }
 

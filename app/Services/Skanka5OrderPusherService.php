@@ -8,7 +8,7 @@ class Skanka5OrderPusherService
 {
     public function pushOrderToApi(Order $order): bool
     {
-        return (new TskconnectOrderService())->submitOrder($order, 'MTN');
+        return (new TskconnectOrderService())->submitOrder($order, 'MTN', false);
     }
 
     public function checkOrderStatus($referenceId): ?array

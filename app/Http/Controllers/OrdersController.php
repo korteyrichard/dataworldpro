@@ -20,6 +20,8 @@ use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Services\MasterNetGhOrderPusherService;
 use App\Services\BundlePortalMtnPusherDispatcher;
+use App\Services\BundlePortalMtnExpressPusherDispatcher;
+use App\Services\MtnExpressPusherDispatcher;
 use App\Services\BundlePortalOrderPusherService;
 use App\Models\Setting;
 use App\Models\VerifiedNumber;
@@ -237,6 +239,15 @@ class OrdersController extends Controller
             $bundlePortalEnabled = (bool) Setting::get('bundleportal_api_enabled', 0);
             
             foreach ($createdOrders as $order) {
+                if (BundlePortalMtnExpressPusherDispatcher::isExpressOrder($order)) {
+                    $pushed = (new MtnExpressPusherDispatcher())->push($order);
+                    Log::log($pushed ? 'info' : 'warning', 'MTN Express provider dispatch finished', [
+                        'order_id' => $order->id,
+                        'submitted' => $pushed,
+                    ]);
+                    continue;
+                }
+
                 try {
                     if (strtolower($order->network) === 'mtn') {
                         if ($bundlePortalMtnEnabled) {

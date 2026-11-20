@@ -26,7 +26,7 @@ class BundlePortalMtnOrderPusherService
         $successful = 0;
 
         foreach ($items as $lineNumber => $item) {
-            if (stripos($item->name, 'mtn') === false) {
+            if (!$this->acceptsProductName($item->name)) {
                 continue;
             }
 
@@ -68,7 +68,7 @@ class BundlePortalMtnOrderPusherService
                     'response'    => $data,
                 ]);
 
-                if (!empty($data['success']) && !empty($data['data']['reference'])) {
+                if ($response->successful() && !empty($data['success']) && !empty($data['data']['reference'])) {
                     $update = [
                         'reference_id' => $data['data']['reference'],
                         'order_pusher_status' => 'success',
@@ -98,6 +98,11 @@ class BundlePortalMtnOrderPusherService
         }
 
         return $successful > 0;
+    }
+
+    protected function acceptsProductName(string $name): bool
+    {
+        return stripos($name, 'mtn') !== false && strcasecmp(trim($name), 'mtn express') !== 0;
     }
 
     public function checkOrderStatus(string $reference): ?array

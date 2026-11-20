@@ -20,7 +20,7 @@ class CartController extends Controller
         $user = Auth::user();
         
         // MTN-only restrictions
-        if ($request->has('beneficiary_number') && strtolower($request->network ?? '') === 'mtn') {
+        if ($request->has('beneficiary_number') && in_array(strtolower($request->network ?? ''), ['mtn', 'mtn_express'], true)) {
             if (!VerifiedNumber::isAllowed($request->beneficiary_number)) {
                 UnverifiedNumber::log($request->beneficiary_number, 'verified_number', 'cart');
                 $errorMessage = 'The number ' . $request->beneficiary_number . ' is not currently verified to receive orders. It has been added to the verification list and will be verified.';
@@ -29,7 +29,7 @@ class CartController extends Controller
                 }
                 return redirect()->back()->withErrors(['error' => $errorMessage]);
             }
-            if (!PreviousOrderRestrictionService::isAllowed($request->beneficiary_number, $request->network)) {
+            if (!PreviousOrderRestrictionService::isAllowed($request->beneficiary_number, 'mtn')) {
                 UnverifiedNumber::log($request->beneficiary_number, 'previous_order', 'cart');
                 $errorMessage = 'The number ' . $request->beneficiary_number . ' has not placed an order before and cannot receive orders at this time. It has been added to the verification list and will be verified.';
                 if ($request->expectsJson()) {
@@ -52,9 +52,7 @@ class CartController extends Controller
             $productType = $productTypeMap[$user->role] ?? 'agent_product';
             
             // Find the product by network and product type
-            $product = Product::where('network', $request->network)
-                ->where('product_type', $productType)
-                ->first();
+            $product = $this->findProductForNetworkSelection($request->network, $productType);
             
             if (!$product) {
                 return response()->json(['success' => false, 'message' => 'Product not found'], 400);
@@ -113,7 +111,7 @@ class CartController extends Controller
                 'product_variant_id' => $variant->id,
                 'quantity' => 1,
                 'beneficiary_number' => $request->beneficiary_number,
-                'network' => $request->network,
+                'network' => $product->network,
                 'price' => $variant->price
             ]);
             
@@ -258,9 +256,7 @@ class CartController extends Controller
             $productType = $productTypeMap[$user->role] ?? 'agent_product';
             
             // Find the product by network and product type
-            $product = Product::where('network', $request->network)
-                ->where('product_type', $productType)
-                ->first();
+            $product = $this->findProductForNetworkSelection($request->network, $productType);
             
             if (!$product) {
                 return response()->json(['success' => false, 'message' => 'Product not found'], 400);
@@ -297,13 +293,13 @@ class CartController extends Controller
                     // Validate phone number format
                     if (preg_match('/^\d{10}$/', $phoneNumber)) {
                         // MTN-only restrictions
-                        if (strtolower($request->network) === 'mtn') {
+                        if (in_array(strtolower($request->network), ['mtn', 'mtn_express'], true)) {
                             if (!VerifiedNumber::isAllowed($phoneNumber)) {
                                 UnverifiedNumber::log($phoneNumber, 'verified_number', 'cart');
                                 Log::info('Skipping due to verified number restriction: ' . $phoneNumber);
                                 continue;
                             }
-                            if (!PreviousOrderRestrictionService::isAllowed($phoneNumber, $request->network)) {
+                            if (!PreviousOrderRestrictionService::isAllowed($phoneNumber, 'mtn')) {
                                 UnverifiedNumber::log($phoneNumber, 'previous_order', 'cart');
                                 Log::info('Skipping due to previous order restriction: ' . $phoneNumber);
                                 continue;
@@ -356,7 +352,7 @@ class CartController extends Controller
                                 'product_variant_id' => $variant->id,
                                 'quantity' => 1,
                                 'beneficiary_number' => $phoneNumber,
-                                'network' => $request->network,
+                                'network' => $product->network,
                                 'price' => $variant->price
                             ]);
                             $addedCount++;
@@ -414,9 +410,7 @@ class CartController extends Controller
             Log::info('Product type determined', ['product_type' => $productType]);
             
             // Find the product by network and product type
-            $product = Product::where('network', $request->network)
-                ->where('product_type', $productType)
-                ->first();
+            $product = $this->findProductForNetworkSelection($request->network, $productType);
             
             Log::info('Product search result', ['product_found' => $product ? true : false, 'network' => $request->network, 'product_type' => $productType]);
             
@@ -457,13 +451,13 @@ class CartController extends Controller
                         Log::info('Phone number validation passed', ['phone' => $phoneNumber]);
 
                         // MTN-only restrictions
-                        if (strtolower($request->network) === 'mtn') {
+                        if (in_array(strtolower($request->network), ['mtn', 'mtn_express'], true)) {
                             if (!VerifiedNumber::isAllowed($phoneNumber)) {
                                 UnverifiedNumber::log($phoneNumber, 'verified_number', 'cart');
                                 Log::info('Skipping due to verified number restriction', ['phone' => $phoneNumber]);
                                 continue;
                             }
-                            if (!PreviousOrderRestrictionService::isAllowed($phoneNumber, $request->network)) {
+                            if (!PreviousOrderRestrictionService::isAllowed($phoneNumber, 'mtn')) {
                                 UnverifiedNumber::log($phoneNumber, 'previous_order', 'cart');
                                 Log::info('Skipping due to previous order restriction', ['phone' => $phoneNumber]);
                                 continue;
@@ -516,7 +510,7 @@ class CartController extends Controller
                                     'product_variant_id' => $variant->id,
                                     'quantity' => 1,
                                     'beneficiary_number' => $phoneNumber,
-                                    'network' => $request->network,
+                                    'network' => $product->network,
                                     'price' => $variant->price
                                 ]);
                                 $addedCount++;
@@ -548,5 +542,20 @@ class CartController extends Controller
             Log::error('Bulk processing error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error processing bulk numbers']);
         }
+    }
+
+    private function findProductForNetworkSelection(string $network, string $productType): ?Product
+    {
+        $query = Product::where('product_type', $productType);
+
+        if (strtoupper($network) === 'MTN_EXPRESS') {
+            return $query->where('network', 'MTN')
+                ->whereRaw('LOWER(TRIM(name)) = ?', ['mtn express'])
+                ->first();
+        }
+
+        return $query->where('network', $network)
+            ->whereRaw('LOWER(TRIM(name)) != ?', ['mtn express'])
+            ->first();
     }
 }

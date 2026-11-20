@@ -10,6 +10,7 @@ use Ramsey\Uuid\Uuid;
 
 class MasterNetGhOrderPusherService
 {
+    protected bool $expressOnly = false;
     private $baseUrl;
     private $apiKey;
 
@@ -19,14 +20,20 @@ class MasterNetGhOrderPusherService
         $this->apiKey  = config('services.masternetgh.api_key');
     }
 
-    public function pushOrderToApi(Order $order)
+    public function pushOrderToApi(Order $order): bool
     {
         Log::info('Processing order for MasterNetGh API push', ['order_id' => $order->id]);
 
         $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
         $processedItems = 0;
+        $successfulItems = 0;
 
         foreach ($items as $item) {
+            $isExpressProduct = strcasecmp(trim($item->name), 'mtn express') === 0;
+            if ($this->expressOnly !== $isExpressProduct) {
+                continue;
+            }
+
             $beneficiaryPhone = $item->pivot->beneficiary_number;
             $variant = \App\Models\ProductVariant::find($item->pivot->product_variant_id);
 
@@ -98,6 +105,7 @@ class MasterNetGhOrderPusherService
                             'order_id'  => $order->id,
                             'public_id' => $publicId,
                         ]);
+                        $successfulItems++;
                     } else {
                         $order->update(['order_pusher_status' => 'failed']);
                         Log::warning('MasterNetGh order push failed due to API status', [
@@ -127,6 +135,8 @@ class MasterNetGhOrderPusherService
         if ($processedItems === 0) {
             Log::info('No items processed for MasterNetGh order', ['order_id' => $order->id]);
         }
+
+        return $successfulItems > 0;
     }
 
     /**

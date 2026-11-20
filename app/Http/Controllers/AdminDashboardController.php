@@ -50,6 +50,12 @@ class AdminDashboardController extends Controller
             'bundlePortalMtnApiEnabled'      => (bool) Setting::get('bundleportal_mtn_api_enabled', 0),
             'bundlePortalMtn2ApiEnabled'     => (bool) Setting::get('bundleportal_mtn_2_api_enabled', 0),
             'bundlePortalMtn3ApiEnabled'     => (bool) Setting::get('bundleportal_mtn_3_api_enabled', 0),
+            'bundlePortalMtnExpressApiEnabled' => (bool) Setting::get('bundleportal_mtn_express_api_enabled', 0),
+            'bundlePortalMtnExpress2ApiEnabled' => (bool) Setting::get('bundleportal_mtn_express_2_api_enabled', 0),
+            'bundlePortalMtnExpress3ApiEnabled' => (bool) Setting::get('bundleportal_mtn_express_3_api_enabled', 0),
+            'jescoMtnExpressOrderPusherEnabled' => (bool) Setting::get('jesco_mtn_express_order_pusher_enabled', 0),
+            'skanka5MtnExpressOrderPusherEnabled' => (bool) Setting::get('skanka5_mtn_express_order_pusher_enabled', 0),
+            'masterNetGhMtnExpressOrderPusherEnabled' => (bool) Setting::get('masternetgh_mtn_express_order_pusher_enabled', 0),
             'bundlePortalApiEnabled'         => (bool) Setting::get('bundleportal_api_enabled', 0),
         ]);
     }
@@ -130,6 +136,11 @@ class AdminDashboardController extends Controller
      */
     public function orders(Request $request)
     {
+        $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
         $orders = Order::with(['products' => function($query) {
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
         }, 'user', 'commissions'])->select('*')->latest();
@@ -151,7 +162,22 @@ class AdminDashboardController extends Controller
         }
 
         if ($request->has('order_pusher_status') && $request->input('order_pusher_status') !== '') {
-            $orders->where('order_pusher_status', $request->input('order_pusher_status'));
+            if ($request->input('order_pusher_status') === 'disabled') {
+                $orders->where(function ($query) {
+                    $query->where('order_pusher_status', 'disabled')
+                        ->orWhereNull('order_pusher_status');
+                });
+            } else {
+                $orders->where('order_pusher_status', $request->input('order_pusher_status'));
+            }
+        }
+
+        if ($request->filled('date_from')) {
+            $orders->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $orders->whereDate('created_at', '<=', $request->input('date_to'));
         }
 
         if ($request->has('order_source') && $request->input('order_source') !== '') {
@@ -188,6 +214,8 @@ class AdminDashboardController extends Controller
             'filterNetwork' => $request->input('network', ''),
             'filterStatus' => $request->input('status', ''),
             'filterOrderPusherStatus' => $request->input('order_pusher_status', ''),
+            'filterDateFrom' => $request->input('date_from', ''),
+            'filterDateTo' => $request->input('date_to', ''),
             'searchOrderId' => $request->input('order_id', ''),
             'searchBeneficiaryNumber' => $request->input('beneficiary_number', ''),
             'filterOrderSource' => $request->input('order_source', ''),
@@ -1105,6 +1133,51 @@ class AdminDashboardController extends Controller
         Setting::set('bundleportal_mtn_3_api_enabled', $enabled ? '1' : '0');
         $status = $enabled ? 'enabled' : 'disabled';
         return redirect()->back()->with('success', "Bundle Portal MTN 3 order pusher {$status} successfully.");
+    }
+
+    public function toggleBundlePortalMtnExpressApi(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('bundleportal_mtn_express_api_enabled', $enabled ? '1' : '0');
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Bundle Portal MTN Express order pusher {$status} successfully.");
+    }
+
+    public function toggleBundlePortalMtnExpress2Api(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('bundleportal_mtn_express_2_api_enabled', $enabled ? '1' : '0');
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Bundle Portal MTN Express 2 order pusher {$status} successfully.");
+    }
+
+    public function toggleBundlePortalMtnExpress3Api(Request $request)
+    {
+        $enabled = $request->input('enabled', false);
+        Setting::set('bundleportal_mtn_express_3_api_enabled', $enabled ? '1' : '0');
+        $status = $enabled ? 'enabled' : 'disabled';
+        return redirect()->back()->with('success', "Bundle Portal MTN Express 3 order pusher {$status} successfully.");
+    }
+
+    public function toggleJescoMtnExpressOrderPusher(Request $request)
+    {
+        $enabled = $request->boolean('enabled');
+        Setting::set('jesco_mtn_express_order_pusher_enabled', $enabled ? '1' : '0');
+        return redirect()->back()->with('success', 'Jesco MTN Express order pusher ' . ($enabled ? 'enabled' : 'disabled') . ' successfully.');
+    }
+
+    public function toggleSkanka5MtnExpressOrderPusher(Request $request)
+    {
+        $enabled = $request->boolean('enabled');
+        Setting::set('skanka5_mtn_express_order_pusher_enabled', $enabled ? '1' : '0');
+        return redirect()->back()->with('success', 'Skanka5 MTN Express order pusher ' . ($enabled ? 'enabled' : 'disabled') . ' successfully.');
+    }
+
+    public function toggleMasterNetGhMtnExpressOrderPusher(Request $request)
+    {
+        $enabled = $request->boolean('enabled');
+        Setting::set('masternetgh_mtn_express_order_pusher_enabled', $enabled ? '1' : '0');
+        return redirect()->back()->with('success', 'MasterNetGh MTN Express order pusher ' . ($enabled ? 'enabled' : 'disabled') . ' successfully.');
     }
 
     /**

@@ -141,6 +141,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::post('bundleportal-mtn-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtnApi'])->name('bundleportal-mtn-api.toggle');
     Route::post('bundleportal-mtn-2-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtn2Api'])->name('bundleportal-mtn-2-api.toggle');
     Route::post('bundleportal-mtn-3-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtn3Api'])->name('bundleportal-mtn-3-api.toggle');
+    Route::post('bundleportal-mtn-express-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtnExpressApi'])->name('bundleportal-mtn-express-api.toggle');
+    Route::post('bundleportal-mtn-express-2-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtnExpress2Api'])->name('bundleportal-mtn-express-2-api.toggle');
+    Route::post('bundleportal-mtn-express-3-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalMtnExpress3Api'])->name('bundleportal-mtn-express-3-api.toggle');
+    Route::post('jesco-mtn-express-order-pusher/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleJescoMtnExpressOrderPusher'])->name('jesco-mtn-express-order-pusher.toggle');
+    Route::post('skanka5-mtn-express-order-pusher/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleSkanka5MtnExpressOrderPusher'])->name('skanka5-mtn-express-order-pusher.toggle');
+    Route::post('masternetgh-mtn-express-order-pusher/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleMasterNetGhMtnExpressOrderPusher'])->name('masternetgh-mtn-express-order-pusher.toggle');
     Route::post('bundleportal-api/toggle', [\App\Http\Controllers\AdminDashboardController::class, 'toggleBundlePortalApi'])->name('bundleportal-api.toggle');
     
     // Alert routes

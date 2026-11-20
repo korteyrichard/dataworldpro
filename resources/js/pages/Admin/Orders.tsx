@@ -65,6 +65,8 @@ interface AdminOrdersPageProps {
   filterNetwork: string;
   filterStatus: string;
   filterOrderPusherStatus: string;
+  filterDateFrom: string;
+  filterDateTo: string;
   filterOrderSource: string;
   searchOrderId: string;
   searchBeneficiaryNumber: string;
@@ -80,6 +82,8 @@ export default function AdminOrders() {
     filterNetwork: initialNetworkFilter,
     filterStatus: initialStatusFilter,
     filterOrderPusherStatus: initialOrderPusherStatusFilter,
+    filterDateFrom: initialDateFromFilter,
+    filterDateTo: initialDateToFilter,
     filterOrderSource: initialOrderSourceFilter,
     searchOrderId: initialSearchOrderId,
     searchBeneficiaryNumber: initialSearchBeneficiaryNumber,
@@ -91,6 +95,8 @@ export default function AdminOrders() {
   const [networkFilter, setNetworkFilter] = useState(initialNetworkFilter || '');
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter || '');
   const [orderPusherStatusFilter, setOrderPusherStatusFilter] = useState(initialOrderPusherStatusFilter || '');
+  const [dateFromFilter, setDateFromFilter] = useState(initialDateFromFilter || '');
+  const [dateToFilter, setDateToFilter] = useState(initialDateToFilter || '');
   const [searchOrderId, setSearchOrderId] = useState(initialSearchOrderId || '');
   const [searchBeneficiaryNumber, setSearchBeneficiaryNumber] = useState(initialSearchBeneficiaryNumber || '');
   const [searchEmail, setSearchEmail] = useState(initialSearchEmail || '');
@@ -101,41 +107,44 @@ export default function AdminOrders() {
   const networks = Array.from(new Set(orders.data.map(o => o.network).filter(Boolean)));
 
   const handleFilterChange = (filterName: string, value: string) => {
-    const params: any = {};
-    
-    if (filterName === 'network') {
-      setNetworkFilter(value);
-      if (value) params.network = value;
-    } else if (networkFilter) {
-      params.network = networkFilter;
-    }
-    
-    if (filterName === 'status') {
-      setStatusFilter(value);
-      if (value) params.status = value;
-    } else if (statusFilter) {
-      params.status = statusFilter;
-    }
-    
-    if (filterName === 'order_pusher_status') {
-      setOrderPusherStatusFilter(value);
-      if (value) params.order_pusher_status = value;
-    } else if (orderPusherStatusFilter) {
-      params.order_pusher_status = orderPusherStatusFilter;
-    }
-    
-    if (filterName === 'order_source') {
-      setOrderSourceFilter(value);
-      if (value) params.order_source = value;
-    } else if (orderSourceFilter) {
-      params.order_source = orderSourceFilter;
-    }
-    
-    router.get(route('admin.orders'), params, { preserveState: true, replace: true });
+    const params: Record<string, string> = {
+      network: networkFilter,
+      status: statusFilter,
+      order_pusher_status: orderPusherStatusFilter,
+      order_source: orderSourceFilter,
+      date_from: dateFromFilter,
+      date_to: dateToFilter,
+      order_id: searchOrderId,
+      beneficiary_number: searchBeneficiaryNumber,
+      email: searchEmail,
+    };
+
+    const setters: Record<string, (value: string) => void> = {
+      network: setNetworkFilter,
+      status: setStatusFilter,
+      order_pusher_status: setOrderPusherStatusFilter,
+      order_source: setOrderSourceFilter,
+      date_from: setDateFromFilter,
+      date_to: setDateToFilter,
+    };
+    setters[filterName]?.(value);
+    params[filterName] = value;
+
+    router.get(route('admin.orders'), Object.fromEntries(Object.entries(params).filter(([, item]) => item !== '')), { preserveState: true, replace: true });
   };
 
   const handleSearch = (searchType: 'order_id' | 'beneficiary_number' | 'email', value: string) => {
-    const searchParams: any = {};
+    const searchParams: Record<string, string> = {
+      network: networkFilter,
+      status: statusFilter,
+      order_pusher_status: orderPusherStatusFilter,
+      order_source: orderSourceFilter,
+      date_from: dateFromFilter,
+      date_to: dateToFilter,
+      order_id: searchOrderId,
+      beneficiary_number: searchBeneficiaryNumber,
+      email: searchEmail,
+    };
     if (searchType === 'order_id' && value) {
       searchParams.order_id = value;
     } else if (searchType === 'beneficiary_number' && value) {
@@ -143,6 +152,7 @@ export default function AdminOrders() {
     } else if (searchType === 'email' && value) {
       searchParams.email = value;
     }
+    searchParams[searchType] = value;
     
     if (searchType === 'order_id') {
       setSearchOrderId(value);
@@ -152,7 +162,7 @@ export default function AdminOrders() {
       setSearchEmail(value);
     }
     
-    router.get(route('admin.orders'), searchParams, { preserveState: true, replace: true });
+    router.get(route('admin.orders'), Object.fromEntries(Object.entries(searchParams).filter(([, item]) => item !== '')), { preserveState: true, replace: true });
   };
 
   const handleExpand = (orderId: number) => {
@@ -345,7 +355,7 @@ export default function AdminOrders() {
         )}
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Network</label>
             <select
@@ -385,7 +395,28 @@ export default function AdminOrders() {
               <option value="">--select API status--</option>
               <option value="success">Success</option>
               <option value="failed">Failed</option>
+              <option value="disabled">Disabled</option>
             </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Created from</label>
+            <input
+              type="date"
+              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
+              value={dateFromFilter}
+              onChange={(e) => handleFilterChange('date_from', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Created to</label>
+            <input
+              type="date"
+              className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white shadow-sm focus:ring focus:ring-blue-500 text-sm"
+              value={dateToFilter}
+              onChange={(e) => handleFilterChange('date_to', e.target.value)}
+            />
           </div>
 
           <div className="flex flex-col gap-1">

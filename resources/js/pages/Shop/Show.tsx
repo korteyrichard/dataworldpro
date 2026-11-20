@@ -55,6 +55,7 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
 
     const networks = [
         { id: 'MTN', name: 'MTN', icon: '/mtnlogo.jpeg', color: 'bg-yellow-500' },
+        { id: 'MTN_EXPRESS', name: 'MTN Express', icon: '/mtnlogo.jpeg', color: 'bg-yellow-600' },
         { id: 'TELECEL', name: 'Telecel', icon: '/telecellogo.png', color: 'bg-red-500' },
         { id: 'ISHARE', name: 'Ishare', icon: '/atlogo.png', color: 'bg-blue-500' },
         { id: 'BIGTIME', name: 'Bigtime', icon: '/atlogo.png', color: 'bg-purple-500' }
@@ -63,6 +64,7 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
     const getNetworkButtonColors = (networkId: string) => {
         switch (networkId) {
             case 'MTN': return 'bg-yellow-500 hover:bg-yellow-600';
+            case 'MTN_EXPRESS': return 'bg-yellow-600 hover:bg-yellow-700';
             case 'TELECEL': return 'bg-red-500 hover:bg-red-600';
             case 'ISHARE': return 'bg-blue-500 hover:bg-blue-600';
             case 'BIGTIME': return 'bg-purple-500 hover:bg-purple-600';
@@ -76,7 +78,10 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
             // Filter products by network and extract available sizes
             const networkProducts = products?.filter(product => {
                 const productNetwork = product.product?.network?.toUpperCase();
-                return productNetwork === network.toUpperCase();
+                const isExpressProduct = product.product?.name?.trim().toLowerCase() === 'mtn express';
+                const isExpressSelection = network.toUpperCase() === 'MTN_EXPRESS';
+                const selectedProductNetwork = isExpressSelection ? 'MTN' : network.toUpperCase();
+                return productNetwork === selectedProductNetwork && isExpressProduct === isExpressSelection;
             }) || [];
 
             const sizes = networkProducts.map(product => {
@@ -145,7 +150,10 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                body: JSON.stringify({ beneficiary_number: beneficiaryNumber, network: selectedNetwork }),
+                body: JSON.stringify({
+                    beneficiary_number: beneficiaryNumber,
+                    network: selectedNetwork === 'MTN_EXPRESS' ? 'MTN' : selectedNetwork,
+                }),
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.message || 'Could not verify this number.');
@@ -183,10 +191,13 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
             // Find the agent product that matches the selected network and bundle size
             const matchingProduct = products?.find(product => {
                 const productNetwork = product.product?.network?.toUpperCase();
-                const selectedNetworkUpper = selectedNetwork.toUpperCase();
+                const isExpressSelection = selectedNetwork.toUpperCase() === 'MTN_EXPRESS';
+                const selectedNetworkUpper = isExpressSelection ? 'MTN' : selectedNetwork.toUpperCase();
+                const isExpressProduct = product.product?.name?.trim().toLowerCase() === 'mtn express';
                 
                 // Check if networks match
                 if (productNetwork !== selectedNetworkUpper) return false;
+                if (isExpressProduct !== isExpressSelection) return false;
                 
                 // Check if the variant attributes match the selected bundle size
                 const variant = product.variant;
@@ -397,7 +408,7 @@ export default function Show({ shop, products, agent, trackOrderVideoUrl }: Shop
                             {/* Network Selection */}
                             <div className="mb-6">
                                 <label className="block text-sm font-medium mb-3 text-gray-900 dark:text-gray-100">Select Network</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                                     {networks.map((network) => (
                                         <button
                                             key={network.id}

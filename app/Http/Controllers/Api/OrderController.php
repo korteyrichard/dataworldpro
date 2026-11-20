@@ -20,6 +20,8 @@ use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Services\MasterNetGhOrderPusherService;
 use App\Services\BundlePortalMtnPusherDispatcher;
+use App\Services\BundlePortalMtnExpressPusherDispatcher;
+use App\Services\MtnExpressPusherDispatcher;
 use App\Services\BundlePortalOrderPusherService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Setting;
@@ -138,7 +140,9 @@ class OrderController extends Controller
         
         // Push order to external API based on network (if enabled)
         try {
-            if (strtolower($order->network) === 'mtn') {
+            if (BundlePortalMtnExpressPusherDispatcher::isExpressOrder($order)) {
+                (new MtnExpressPusherDispatcher())->push($order);
+            } elseif (strtolower($order->network) === 'mtn') {
                 if (Setting::get('bundleportal_mtn_api_enabled', 0)
                     || Setting::get('bundleportal_mtn_2_api_enabled', 0)
                     || Setting::get('bundleportal_mtn_3_api_enabled', 0)) {

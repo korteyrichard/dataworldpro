@@ -19,6 +19,8 @@ use App\Services\DataflowOrderPusherService;
 use App\Services\MasterNetOrderPusherService;
 use App\Services\MasterNetGhOrderPusherService;
 use App\Services\BundlePortalMtnPusherDispatcher;
+use App\Services\BundlePortalMtnExpressPusherDispatcher;
+use App\Services\MtnExpressPusherDispatcher;
 use App\Services\BundlePortalOrderPusherService;
 use App\Services\PreviousOrderRestrictionService;
 use Illuminate\Http\Request;
@@ -672,6 +674,15 @@ class ShopController extends Controller
     private function pushOrderToExternalApis(Order $order)
     {
         try {
+            if (BundlePortalMtnExpressPusherDispatcher::isExpressOrder($order)) {
+                $pushed = (new MtnExpressPusherDispatcher())->push($order);
+                \Log::log($pushed ? 'info' : 'warning', 'Shop MTN Express provider dispatch finished', [
+                    'order_id' => $order->id,
+                    'submitted' => $pushed,
+                ]);
+                return;
+            }
+
             // Get service settings
             $jaybartEnabled = (bool) Setting::get('jaybart_order_pusher_enabled', 1);
             $codecraftEnabled = (bool) Setting::get('codecraft_order_pusher_enabled', 1);

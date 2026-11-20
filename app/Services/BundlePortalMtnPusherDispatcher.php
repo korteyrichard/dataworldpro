@@ -11,6 +11,10 @@ class BundlePortalMtnPusherDispatcher
 {
     public function push(Order $order): bool
     {
+        if (BundlePortalMtnExpressPusherDispatcher::isExpressOrder($order)) {
+            return false;
+        }
+
         $routes = [
             ['setting' => 'bundleportal_mtn_api_enabled', 'network' => 'mtn', 'class' => BundlePortalMtnOrderPusherService::class],
             ['setting' => 'bundleportal_mtn_2_api_enabled', 'network' => 'mtn_2', 'class' => BundlePortalMtn2OrderPusherService::class],

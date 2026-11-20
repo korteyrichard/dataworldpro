@@ -108,6 +108,7 @@ export default function Dashboard({ auth }: DashboardProps) {
 
   const networks = [
     { id: 'MTN', name: 'MTN', icon: '/mtnlogo.jpeg', color: 'bg-yellow-500' },
+    { id: 'MTN_EXPRESS', name: 'MTN Express', icon: '/mtnlogo.jpeg', color: 'bg-yellow-600' },
     { id: 'TELECEL', name: 'Telecel', icon: '/telecellogo.png', color: 'bg-red-500' },
     { id: 'ISHARE', name: 'Ishare', icon: '/atlogo.png', color: 'bg-blue-500' },
     { id: 'BIGTIME', name: 'Bigtime', icon: '/atlogo.png', color: 'bg-purple-500' }
@@ -116,6 +117,7 @@ export default function Dashboard({ auth }: DashboardProps) {
   const getNetworkButtonColors = (networkId: string) => {
     switch (networkId) {
       case 'MTN': return 'bg-yellow-500 hover:bg-yellow-600';
+      case 'MTN_EXPRESS': return 'bg-yellow-600 hover:bg-yellow-700';
       case 'TELECEL': return 'bg-red-500 hover:bg-red-600';
       case 'ISHARE': return 'bg-blue-500 hover:bg-blue-600';
       case 'BIGTIME': return 'bg-purple-500 hover:bg-purple-600';
@@ -582,7 +584,7 @@ export default function Dashboard({ auth }: DashboardProps) {
 
             <div className="p-6">
               {/* Network Selection */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
                 {networks.map((network) => (
                   <button
                     key={network.id}
