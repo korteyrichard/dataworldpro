@@ -236,6 +236,7 @@ Route::prefix('v1')->group(function () {
 
 // Inbound Webhooks (public - no auth, verified by secret)
 Route::prefix('webhook')->group(function () {
+    Route::post('/jaybart', [InboundWebhookController::class, 'jaybart']);
     Route::post('/bundleportal', [InboundWebhookController::class, 'bundleportal']);
     Route::post('/masternetdatahub', [InboundWebhookController::class, 'masternetdatahub']);
     Route::post('/jessco', [InboundWebhookController::class, 'jessco']);

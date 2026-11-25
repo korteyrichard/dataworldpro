@@ -31,7 +31,17 @@ class StoreOrderRequest extends FormRequest
                     }
                 }
             ],
-            'network_id' => 'required|integer',
+            'network_id' => ['required_without:network', 'integer', 'prohibits:network'],
+            'network' => [
+                'required_without:network_id',
+                'string',
+                'prohibits:network_id',
+                function ($attribute, $value, $fail) {
+                    if (!is_string($value) || !in_array(strtoupper(trim($value)), ['MTN', 'MTN EXPRESS'], true)) {
+                        $fail('The network must be MTN or MTN Express when selecting a product by name.');
+                    }
+                },
+            ],
             'size' => 'required|string'
         ];
     }

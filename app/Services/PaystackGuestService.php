@@ -295,6 +295,11 @@ class PaystackGuestService
                 if ((bool) Setting::get('bundleportal_api_enabled', 0)) {
                     (new BundlePortalOrderPusherService())->pushOrderToApi($order);
                     \Log::info('Order pushed to BundlePortal API', ['orderId' => $order->id, 'network' => $order->network]);
+                } elseif (in_array(strtolower($order->network), ['telecel', 'ishare'], true)) {
+                    \Log::warning('BundlePortal is disabled; not falling back to CodeCraft for this network', [
+                        'orderId' => $order->id,
+                        'network' => $order->network,
+                    ]);
                 } elseif ((bool) Setting::get('codecraft_order_pusher_enabled', 1)) {
                     (new CodeCraftOrderPusherService())->pushOrderToApi($order);
                     \Log::info('Order pushed to CodeCraft API', ['orderId' => $order->id, 'network' => $order->network]);

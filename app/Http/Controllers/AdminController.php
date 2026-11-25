@@ -348,6 +348,7 @@ class AdminController extends Controller
             'agent_upgrade_fee' => Setting::get('agent_upgrade_fee', 30),
             'track_order_video_url' => Setting::get('track_order_video_url', ''),
             'verify_topup_video_url' => Setting::get('verify_topup_video_url', ''),
+            'add_product_video_url' => Setting::get('add_product_video_url', ''),
             'number_restriction_enabled' => (bool) Setting::get('number_restriction_enabled', 0),
             'previous_order_restriction_enabled' => (bool) Setting::get('previous_order_restriction_enabled', 0),
         ];
@@ -380,14 +381,16 @@ class AdminController extends Controller
             'agent_upgrade_fee' => 'required|numeric|min:0',
             'track_order_video_url' => 'nullable|url',
             'verify_topup_video_url' => 'nullable|url',
+            'add_product_video_url' => 'nullable|url',
         ]);
 
         Setting::set('minimum_withdrawal_amount', $request->minimum_withdrawal_amount);
         Setting::set('minimum_wallet_withdrawal_amount', $request->minimum_wallet_withdrawal_amount);
         Setting::set('referral_commission_amount', $request->referral_commission_amount);
         Setting::set('agent_upgrade_fee', $request->agent_upgrade_fee);
-        Setting::set('track_order_video_url', $request->track_order_video_url);
-        Setting::set('verify_topup_video_url', $request->verify_topup_video_url);
+        Setting::set('track_order_video_url', $request->input('track_order_video_url') ?? '');
+        Setting::set('verify_topup_video_url', $request->input('verify_topup_video_url') ?? '');
+        Setting::set('add_product_video_url', $request->input('add_product_video_url') ?? '');
 
         return redirect()->back()->with('success', 'Store management settings updated successfully');
     }

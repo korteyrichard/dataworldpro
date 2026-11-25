@@ -12,6 +12,51 @@ use Illuminate\Support\Facades\Log;
 
 class InboundWebhookController extends Controller
 {
+    public function jaybart(Request $request)
+    {
+        $secret = config('app.order_pusher_webhook_secret');
+        $signature = (string) $request->header('X-Webhook-Signature', '');
+
+        if (!is_string($secret) || $secret === '' || $signature === '') {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret);
+        if (!hash_equals($expected, $signature)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+        if (!is_array($payload)) {
+            return response()->json(['message' => 'Invalid JSON payload'], 400);
+        }
+
+        if (($payload['event'] ?? null) !== 'order.status.updated') {
+            Log::warning('Unsupported Jaybart webhook event received', [
+                'event' => $payload['event'] ?? null,
+            ]);
+            return response()->json(['message' => 'Webhook acknowledged'], 200);
+        }
+
+        $data = $payload['data'] ?? null;
+        $transactionCode = is_array($data) ? ($data['transaction_code'] ?? null) : null;
+        $status = is_array($data) ? ($data['status'] ?? null) : null;
+        $clientReference = is_array($data) ? ($data['client_ref'] ?? null) : null;
+
+        if (!is_string($transactionCode) || $transactionCode === '' || !is_string($status) || $status === '') {
+            return response()->json(['message' => 'Missing transaction_code or status'], 422);
+        }
+
+        $this->updateOrderStatus(
+            $transactionCode,
+            $status,
+            'jaybart',
+            is_string($clientReference) ? $clientReference : null
+        );
+
+        return response()->json(['message' => 'Webhook processed'], 200);
+    }
+
     public function bundleportal(Request $request)
     {
         $secret = config('services.bundleportal.webhook_secret');
@@ -141,7 +186,12 @@ class InboundWebhookController extends Controller
         return hash_equals($expected, $signature);
     }
 
-    private function updateOrderStatus(string $referenceId, string $externalStatus, string $source): void
+    private function updateOrderStatus(
+        string $referenceId,
+        string $externalStatus,
+        string $source,
+        ?string $clientReference = null
+    ): void
     {
         $orderQuery = Order::with(['user', 'products' => function ($query) {
             $query->withPivot('product_variant_id');
@@ -150,6 +200,20 @@ class InboundWebhookController extends Controller
             $orderQuery->where(function ($query) use ($referenceId) {
                 $query->where('bundleportal_reference_id', $referenceId)
                     ->orWhere('reference_id', $referenceId);
+            });
+        } elseif ($source === 'jaybart') {
+            $orderQuery->where(function ($query) use ($referenceId, $clientReference) {
+                $query->where('reference_id', $referenceId);
+
+                if ($clientReference && preg_match('/^order-(\d+)-item-(\d+)$/', $clientReference, $matches)) {
+                    $orderId = (int) $matches[1];
+                    $itemId = (int) $matches[2];
+
+                    $query->orWhere(function ($query) use ($orderId, $itemId) {
+                        $query->where('id', $orderId)
+                            ->whereHas('products', fn ($products) => $products->where('order_product.id', $itemId));
+                    });
+                }
             });
         } else {
             $orderQuery->where('reference_id', $referenceId);
@@ -212,6 +276,10 @@ class InboundWebhookController extends Controller
 
         if ($source === 'masternetdatahub') {
             unset($statusMap['failed'], $statusMap['cancelled'], $statusMap['rejected']);
+        }
+
+        if ($source === 'jaybart') {
+            $statusMap['placed'] = 'processing';
         }
 
         return $statusMap[strtolower($externalStatus)] ?? null;

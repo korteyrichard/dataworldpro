@@ -53,6 +53,7 @@ interface AdminDashboardProps extends PageProps {
   jescoMtnExpressOrderPusherEnabled: boolean;
   skanka5MtnExpressOrderPusherEnabled: boolean;
   masterNetGhMtnExpressOrderPusherEnabled: boolean;
+  dataflowMtnExpressOrderPusherEnabled: boolean;
   bundlePortalApiEnabled: boolean;
 }
 
@@ -84,6 +85,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   jescoMtnExpressOrderPusherEnabled,
   skanka5MtnExpressOrderPusherEnabled,
   masterNetGhMtnExpressOrderPusherEnabled,
+  dataflowMtnExpressOrderPusherEnabled,
   bundlePortalApiEnabled,
 }) => {
   const { auth } = usePage<AdminDashboardProps>().props;
@@ -183,6 +185,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const toggleJescoMtnExpress = () => router.post(route('admin.jesco-mtn-express-order-pusher.toggle'), { enabled: !jescoMtnExpressOrderPusherEnabled });
   const toggleSkanka5MtnExpress = () => router.post(route('admin.skanka5-mtn-express-order-pusher.toggle'), { enabled: !skanka5MtnExpressOrderPusherEnabled });
   const toggleMasterNetGhMtnExpress = () => router.post(route('admin.masternetgh-mtn-express-order-pusher.toggle'), { enabled: !masterNetGhMtnExpressOrderPusherEnabled });
+  const toggleDataflowMtnExpress = () => router.post(route('admin.dataflow-mtn-express-order-pusher.toggle'), { enabled: !dataflowMtnExpressOrderPusherEnabled });
 
   return (
     <AdminLayout
@@ -534,6 +537,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               { title: 'Jesco MTN Express Order Pusher', enabled: jescoMtnExpressOrderPusherEnabled, toggle: toggleJescoMtnExpress },
               { title: 'Skanka5 MTN Express Order Pusher', enabled: skanka5MtnExpressOrderPusherEnabled, toggle: toggleSkanka5MtnExpress },
               { title: 'MasterNetGh MTN Express Order Pusher', enabled: masterNetGhMtnExpressOrderPusherEnabled, toggle: toggleMasterNetGhMtnExpress },
+              { title: 'Dataflow MTN Express Order Pusher', enabled: dataflowMtnExpressOrderPusherEnabled, toggle: toggleDataflowMtnExpress },
             ].map((provider) => (
               <div key={provider.title} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
                 <div className="flex items-center justify-between">

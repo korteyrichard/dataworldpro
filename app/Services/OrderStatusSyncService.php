@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 class OrderStatusSyncService
 {
     private $codeCraftAgentEmail = 'ammababaah@gmail.com';
-    private $mtnApiKey = '';
 
     public function syncSingleOrderStatus(Order $order)
     {
@@ -115,17 +114,33 @@ class OrderStatusSyncService
         }
 
         try {
+            $apiKey = config('app.order_pusher_api_key');
+            if (!is_string($apiKey) || $apiKey === '') {
+                Log::warning('Jaybart status check skipped because the API key is not configured', [
+                    'order_id' => $order->id,
+                ]);
+                return;
+            }
+
+            $configuredBaseUrl = config('app.order_pusher_base_url');
+            if (!is_string($configuredBaseUrl) || trim($configuredBaseUrl) === '') {
+                Log::warning('Jaybart status check skipped because the base URL is not configured', [
+                    'order_id' => $order->id,
+                ]);
+                return;
+            }
+            $baseUrl = rtrim($configuredBaseUrl, '/');
             Log::info('Making MTN API call', [
                 'order_id' => $order->id,
                 'transaction_id' => $referenceId,
-                'api_endpoint' => 'https://agent.jaybartservices.com/api/v1/fetch-other-network-transaction'
+                'api_endpoint' => $baseUrl . '/fetch-other-network-transaction'
             ]);
             
             $response = Http::withHeaders([
-                'x-api-key' => $this->mtnApiKey,
+                'x-api-key' => $apiKey,
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json'
-            ])->timeout(20)->post('https://agent.jaybartservices.com/api/v1/fetch-other-network-transaction', [
+            ])->timeout(20)->post($baseUrl . '/fetch-other-network-transaction', [
                 'transaction_id' => $referenceId
             ]);
 

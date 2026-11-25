@@ -134,6 +134,7 @@ return [
 
     'order_pusher_base_url' => env('ORDER_PUSHER_BASE_URL'),
     'order_pusher_api_key' => env('ORDER_PUSHER_API_KEY'),
+    'order_pusher_webhook_secret' => env('ORDER_PUSHER_WEBHOOK_SECRET'),
 
     /*
     |--------------------------------------------------------------------------

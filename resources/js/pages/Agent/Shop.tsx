@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { router } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Youtube } from 'lucide-react';
 
 interface AvailableProduct {
     id: number;
@@ -38,13 +38,14 @@ interface ShopProps {
     shop: Shop | null;
     products: Product[];
     availableProducts: AvailableProduct[];
+    addProductVideoUrl: string;
     domains: {
         main: string;
         second: string;
     };
 }
 
-export default function Shop({ auth, shop, products, availableProducts, domains }: ShopProps) {
+export default function Shop({ auth, shop, products, availableProducts, addProductVideoUrl, domains }: ShopProps) {
     const [shopName, setShopName] = useState('');
     const [primaryColor, setPrimaryColor] = useState('#3B82F6');
     const [backgroundColor, setBackgroundColor] = useState('#F1F5F9');
@@ -129,6 +130,15 @@ export default function Shop({ auth, shop, products, availableProducts, domains 
     return (
         <DashboardLayout user={auth.user} header="My Shop">
             <div className="space-y-6">
+                {addProductVideoUrl && (
+                    <Button
+                        onClick={() => window.open(addProductVideoUrl, '_blank', 'noopener,noreferrer')}
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                        <Youtube className="h-4 w-4 mr-2" />
+                        How to Add Product to Store
+                    </Button>
+                )}
                 {!shop ? (
                     /* Create Shop Form */
                     <Card>

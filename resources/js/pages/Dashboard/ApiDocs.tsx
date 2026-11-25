@@ -288,16 +288,27 @@ export default function ApiDocs({ auth }: Props) {
 
                     {/* Network IDs */}
                     <div className="mb-8">
-                        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Network IDs</h3>
+                        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Network and Product Selectors</h3>
                         <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                Use these network IDs for API requests:
+                                For standard products, send <code>network_id</code> with the product ID available to your account. These seeded IDs are examples and can differ between installations:
                             </p>
                             <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
 {`MTN: 5
 TELECEL: 6
 ISHARE: 7
 BIGTIME: 8`}
+                            </pre>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">
+                                For MTN, you can use <code>network: "MTN"</code> for the regular MTN product or <code>network: "MTN Express"</code> for the Express product. Both products use the MTN network; MTN Express is a separate product. Do not send <code>network</code> and <code>network_id</code> together.
+                            </p>
+                            <p className="mt-3 mb-2 text-sm text-gray-600 dark:text-gray-400">Regular MTN request example:</p>
+                            <pre className="overflow-x-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-800">
+{`{
+  "beneficiary_number": "0241234567",
+  "network": "MTN",
+  "size": "2GB"
+}`}
                             </pre>
                         </div>
                     </div>
@@ -338,6 +349,55 @@ BIGTIME: 8`}
                     <div className="mb-8">
                         <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Orders API</h3>
                         <div className="space-y-4">
+                            <div className="rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
+                                <h4 className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-100">MTN Express orders</h4>
+                                <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+                                    Create an order for the MTN Express product using either endpoint. The actual network is MTN; Express is the product name. Both endpoints require a Sanctum API token.
+                                </p>
+                                <p className="mb-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <strong>POST</strong> /api/v1/normal-orders
+                                    <br />
+                                    <strong>POST</strong> /api/v1/excel-orders
+                                </p>
+                                <p className="mb-2 text-sm text-gray-700 dark:text-gray-300">Request body:</p>
+                                <pre className="mb-3 overflow-x-auto rounded bg-gray-100 p-3 text-xs dark:bg-gray-800">
+{`{
+  "beneficiary_number": "0241234567",
+  "network": "MTN Express",
+  "size": "1GB"
+}`}
+                                </pre>
+                                <p className="mb-2 text-sm text-gray-700 dark:text-gray-300">cURL example:</p>
+                                <pre className="mb-3 overflow-x-auto rounded bg-gray-100 p-3 text-xs dark:bg-gray-800">
+{`curl -X POST "https://your-domain.example/api/v1/normal-orders" \\
+  -H "Authorization: Bearer YOUR_API_TOKEN" \\
+  -H "Accept: application/json" \\
+  -H "Content-Type: application/json" \\
+  -d '{"beneficiary_number":"0241234567","network":"MTN Express","size":"1GB"}'`}
+                                </pre>
+                                <p className="mb-2 text-sm text-gray-700 dark:text-gray-300">On success, the API returns HTTP 201. The order starts as pending:</p>
+                                <pre className="mb-3 overflow-x-auto rounded bg-gray-100 p-3 text-xs dark:bg-gray-800">
+{`{
+  "message": "Order created successfully",
+  "order": {
+    "reference_id": 123,
+    "total": "10.00",
+    "status": "pending",
+    "network": "MTN",
+    "beneficiary_number": "0241234567",
+    "products": [
+      { "name": "MTN Express", "quantity": 1, "price": "10.00" }
+    ]
+  }
+}`}
+                                </pre>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    The API finds the MTN Express product configured for the authenticated account type (customer, dealer, or agent) and matches <code>size</code> to an in-stock variant. An administrator must configure that product with the name <code>MTN Express</code>, network <code>MTN</code>, and the requested size. MTN number-verification and previous-order restrictions still apply.
+                                </p>
+                                <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Common errors: <code>422</code> invalid fields or both selectors supplied; <code>403</code> number restricted; <code>404</code> product/size not configured; <code>400</code> out of stock, insufficient balance, or another order already in progress.
+                                </p>
+                            </div>
                             <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                                     <strong>GET</strong> /api/v1/normal-orders
@@ -348,11 +408,11 @@ BIGTIME: 8`}
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                                     <strong>POST</strong> /api/v1/normal-orders
                                 </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Create new order</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Create a standard product order using its <code>network_id</code>. For regular MTN, you can also use <code>network: "MTN"</code>; for MTN Express, use the dedicated instructions above.</p>
                                 <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
 {`{
   "beneficiary_number": "0241234567",
-  "network_id": 1,
+  "network_id": 5,
   "size": "1GB"
 }`}
                                 </pre>

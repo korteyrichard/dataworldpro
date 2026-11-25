@@ -744,6 +744,11 @@ class ShopController extends Controller
                 if ($bundlePortalEnabled) {
                     (new BundlePortalOrderPusherService())->pushOrderToApi($order);
                     \Log::info('Order pushed to BundlePortal API', ['orderId' => $order->id]);
+                } elseif (in_array(strtolower($order->network), ['telecel', 'ishare'], true)) {
+                    \Log::warning('BundlePortal is disabled; not falling back to CodeCraft for this network', [
+                        'orderId' => $order->id,
+                        'network' => $order->network,
+                    ]);
                 } else {
                     $codeCraftOrderPusher = new CodeCraftOrderPusherService();
                     $codeCraftOrderPusher->pushOrderToApi($order);

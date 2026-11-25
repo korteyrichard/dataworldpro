@@ -56,6 +56,7 @@ class AdminDashboardController extends Controller
             'jescoMtnExpressOrderPusherEnabled' => (bool) Setting::get('jesco_mtn_express_order_pusher_enabled', 0),
             'skanka5MtnExpressOrderPusherEnabled' => (bool) Setting::get('skanka5_mtn_express_order_pusher_enabled', 0),
             'masterNetGhMtnExpressOrderPusherEnabled' => (bool) Setting::get('masternetgh_mtn_express_order_pusher_enabled', 0),
+            'dataflowMtnExpressOrderPusherEnabled' => (bool) Setting::get('dataflow_mtn_express_order_pusher_enabled', 0),
             'bundlePortalApiEnabled'         => (bool) Setting::get('bundleportal_api_enabled', 0),
         ]);
     }
@@ -145,8 +146,16 @@ class AdminDashboardController extends Controller
             $query->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id');
         }, 'user', 'commissions'])->select('*')->latest();
 
-        if ($request->has('network') && $request->input('network') !== '') {
-            $orders->where('network', 'like', '%' . $request->input('network') . '%');
+        $network = $request->input('network');
+        if (is_string($network) && $network !== '') {
+            if (strtoupper($network) === 'MTN_EXPRESS') {
+                $orders->whereRaw('LOWER(TRIM(network)) = ?', ['mtn'])
+                    ->whereHas('products', function ($query) {
+                        $query->whereRaw('LOWER(TRIM(products.name)) = ?', ['mtn express']);
+                    });
+            } else {
+                $orders->where('network', 'like', '%' . $network . '%');
+            }
         }
 
         if ($request->has('status') && $request->input('status') !== '') {
@@ -1178,6 +1187,13 @@ class AdminDashboardController extends Controller
         $enabled = $request->boolean('enabled');
         Setting::set('masternetgh_mtn_express_order_pusher_enabled', $enabled ? '1' : '0');
         return redirect()->back()->with('success', 'MasterNetGh MTN Express order pusher ' . ($enabled ? 'enabled' : 'disabled') . ' successfully.');
+    }
+
+    public function toggleDataflowMtnExpressOrderPusher(Request $request)
+    {
+        $enabled = $request->boolean('enabled');
+        Setting::set('dataflow_mtn_express_order_pusher_enabled', $enabled ? '1' : '0');
+        return redirect()->back()->with('success', 'Dataflow MTN Express order pusher ' . ($enabled ? 'enabled' : 'disabled') . ' successfully.');
     }
 
     /**

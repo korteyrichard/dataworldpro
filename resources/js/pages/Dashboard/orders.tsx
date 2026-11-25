@@ -151,6 +151,7 @@ export default function OrdersPage() {
                 onChange={e => setNetworkFilter(e.target.value)}
               >
                 <option value="" className='text-slate-800'>All Networks</option>
+                <option value="MTN_EXPRESS" className='text-slate-700'>MTN Express</option>
                 {networks.map(network => (
                   <option key={network} value={network} className='text-slate-700'>{network}</option>
                 ))}

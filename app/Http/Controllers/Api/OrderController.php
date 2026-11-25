@@ -48,11 +48,24 @@ class OrderController extends Controller
         $user = auth()->user();
 
         // Determine product type based on user role
-        $productType = $user->role === 'customer' ? 'customer_product' : 'agent_product';
+        $productType = match ($user->role) {
+            'customer' => 'customer_product',
+            'dealer' => 'dealer_product',
+            default => 'agent_product',
+        };
 
-        $product = Product::where('id', $request->network_id)
-            ->where('product_type', $productType)
-            ->first();
+        $productQuery = Product::where('product_type', $productType);
+        if ($request->filled('network')) {
+            $productName = strcasecmp(trim($request->network), 'MTN Express') === 0
+                ? 'mtn express'
+                : 'mtn';
+            $product = $productQuery
+                ->whereRaw('LOWER(TRIM(name)) = ?', [$productName])
+                ->whereRaw('LOWER(TRIM(network)) = ?', ['mtn'])
+                ->first();
+        } else {
+            $product = $productQuery->where('id', $request->network_id)->first();
+        }
             
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
@@ -170,6 +183,11 @@ class OrderController extends Controller
             } elseif (in_array(strtolower($order->network), ['telecel', 'ishare', 'bigtime'])) {
                 if (Setting::get('bundleportal_api_enabled', 0)) {
                     (new BundlePortalOrderPusherService())->pushOrderToApi($order);
+                } elseif (in_array(strtolower($order->network), ['telecel', 'ishare'], true)) {
+                    Log::warning('BundlePortal is disabled; not falling back to CodeCraft for this network', [
+                        'orderId' => $order->id,
+                        'network' => $order->network,
+                    ]);
                 } else {
                     (new CodeCraftOrderPusherService())->pushOrderToApi($order);
                 }

@@ -431,6 +431,7 @@ class AgentController extends Controller
             'shop' => $shop,
             'products' => $products,
             'availableProducts' => $availableProducts,
+            'addProductVideoUrl' => Setting::get('add_product_video_url', ''),
             'domains' => [
                 'main' => config('app.main_domain', 'localhost'),
                 'second' => config('app.second_domain')

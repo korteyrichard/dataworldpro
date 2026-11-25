@@ -59,9 +59,16 @@ class OrdersController extends Controller
 
         // Filter by network (whitelist allowed values)
         if ($request->filled('network')) {
-            $allowedNetworks = ['mtn', 'telecel', 'ishare', 'bigtime', 'at', 'MTN', 'Telecel', 'iShare', 'Bigtime', 'AT'];
-            if (in_array($request->network, $allowedNetworks, true)) {
-                $query->where('network', $request->network);
+            if (is_string($request->network) && strtoupper($request->network) === 'MTN_EXPRESS') {
+                $query->whereRaw('LOWER(TRIM(network)) = ?', ['mtn'])
+                    ->whereHas('products', function ($query) {
+                        $query->whereRaw('LOWER(TRIM(products.name)) = ?', ['mtn express']);
+                    });
+            } else {
+                $allowedNetworks = ['mtn', 'telecel', 'ishare', 'bigtime', 'at', 'MTN', 'Telecel', 'iShare', 'Bigtime', 'AT'];
+                if (in_array($request->network, $allowedNetworks, true)) {
+                    $query->where('network', $request->network);
+                }
             }
         }
 
@@ -287,6 +294,11 @@ class OrdersController extends Controller
                         if ($bundlePortalEnabled) {
                             (new BundlePortalOrderPusherService())->pushOrderToApi($order);
                             Log::info('Order pushed to BundlePortal API', ['orderId' => $order->id]);
+                        } elseif (in_array(strtolower($order->network), ['telecel', 'ishare'], true)) {
+                            Log::warning('BundlePortal is disabled; not falling back to CodeCraft for this network', [
+                                'orderId' => $order->id,
+                                'network' => $order->network,
+                            ]);
                         } else {
                             $codeCraftOrderPusher = new CodeCraftOrderPusherService();
                             $codeCraftOrderPusher->pushOrderToApi($order);

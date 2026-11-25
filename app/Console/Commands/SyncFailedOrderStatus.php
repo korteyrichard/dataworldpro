@@ -12,8 +12,6 @@ class SyncFailedOrderStatus extends Command
     protected $signature = 'orders:sync-failed';
     protected $description = 'Check failed order pusher status and sync with external APIs';
 
-    private $mtnApiKey = 'b2fe77274d245a52c7bf4c03ba96f46c2bed9be3';
-
     public function handle()
     {
         $failedOrders = Order::where('order_pusher_status', 'failed')
@@ -37,11 +35,27 @@ class SyncFailedOrderStatus extends Command
     private function checkMtnOrder($order)
     {
         try {
+            $apiKey = config('app.order_pusher_api_key');
+            if (!is_string($apiKey) || $apiKey === '') {
+                Log::error('Jaybart order status check skipped because the API key is not configured', [
+                    'order_id' => $order->id,
+                ]);
+                return;
+            }
+
+            $configuredBaseUrl = config('app.order_pusher_base_url');
+            if (!is_string($configuredBaseUrl) || trim($configuredBaseUrl) === '') {
+                Log::error('Jaybart order status check skipped because the base URL is not configured', [
+                    'order_id' => $order->id,
+                ]);
+                return;
+            }
+            $baseUrl = rtrim($configuredBaseUrl, '/');
             $response = Http::withHeaders([
-                'x-api-key' => $this->mtnApiKey,
+                'x-api-key' => $apiKey,
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json'
-            ])->timeout(20)->post('https://agent.jaybartservices.com/api/v1/fetch-other-network-transaction', [
+            ])->timeout(20)->post($baseUrl . '/fetch-other-network-transaction', [
                 'transaction_id' => $order->reference_id
             ]);
 

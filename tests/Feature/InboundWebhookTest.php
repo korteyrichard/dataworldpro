@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Order;
+use App\Models\Product;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -23,6 +25,60 @@ function jesscHeaders(string $secret, string $body): array
 {
     return ['X-Webhook-Signature' => hash_hmac('sha256', $body, $secret)];
 }
+
+describe('Jaybart webhook (/api/webhook/jaybart)', function () {
+    it('requires a valid sha256-prefixed raw-body signature', function () {
+        config(['app.order_pusher_webhook_secret' => 'test-secret']);
+
+        $this->postJson('/api/webhook/jaybart', [
+            'event' => 'order.status.updated',
+            'data' => ['transaction_code' => 'JB-001', 'status' => 'DELIVERED'],
+        ])->assertStatus(401);
+    });
+
+    it('updates order status using its client ref when the transaction code is not saved yet', function () {
+        $secret = 'test-secret';
+        config(['app.order_pusher_webhook_secret' => $secret]);
+
+        $order = Order::create([
+            'user_id' => User::factory()->create()->id,
+            'reference_id' => 'LOCAL-REF',
+            'status' => 'pending',
+            'beneficiary_number' => '0241234567',
+            'network' => 'MTN',
+            'total' => 10.00,
+            'payment_method' => 'paystack',
+        ]);
+        $product = Product::create([
+            'name' => 'MTN 1GB',
+            'network' => 'MTN',
+            'product_type' => 'customer_product',
+            'expiry' => 'non expiry',
+        ]);
+        $order->products()->attach($product->id, [
+            'quantity' => 1,
+            'price' => 10,
+        ]);
+        $itemId = $order->products()->withPivot('id')->first()->pivot->id;
+
+        $body = json_encode([
+            'event' => 'order.status.updated',
+            'timestamp' => '2026-11-25T13:00:00+00:00',
+            'data' => [
+                'transaction_code' => 'JB-001',
+                'status' => 'DELIVERED',
+                'client_ref' => "order-{$order->id}-item-{$itemId}",
+            ],
+        ]);
+
+        $this->call('POST', '/api/webhook/jaybart', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_WEBHOOK_SIGNATURE' => 'sha256=' . hash_hmac('sha256', $body, $secret),
+        ], $body)->assertOk();
+
+        expect($order->fresh()->status)->toBe('completed');
+    });
+});
 
 // ─── Jessco Webhook ──────────────────────────────────────────────────────────
 

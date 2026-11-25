@@ -14,6 +14,7 @@ interface Settings {
     agent_upgrade_fee: number;
     track_order_video_url: string;
     verify_topup_video_url: string;
+    add_product_video_url: string;
     number_restriction_enabled: boolean;
     previous_order_restriction_enabled: boolean;
 }
@@ -60,6 +61,7 @@ export default function Settings({ auth, settings, verifiedNumbers, verifiedSear
         agent_upgrade_fee: settings.agent_upgrade_fee,
         track_order_video_url: settings.track_order_video_url || '',
         verify_topup_video_url: settings.verify_topup_video_url || '',
+        add_product_video_url: settings.add_product_video_url || '',
     });
 
     const importForm = useForm<{ file: File | null }>({ file: null });
@@ -185,7 +187,7 @@ export default function Settings({ auth, settings, verifiedNumbers, verifiedSear
                                 </div>
                                 <div className="space-y-4">
                                     <h3 className="text-lg font-medium text-gray-900">Tutorial Video URLs</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div className="space-y-2">
                                             <Label htmlFor="track_order_video_url">How to Track Order Video URL</Label>
                                             <Input
@@ -207,6 +209,17 @@ export default function Settings({ auth, settings, verifiedNumbers, verifiedSear
                                                 className={errors.verify_topup_video_url ? 'border-red-500' : ''}
                                             />
                                             {errors.verify_topup_video_url && <p className="text-sm text-red-500">{errors.verify_topup_video_url}</p>}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="add_product_video_url">How to Add Product to Store Video URL</Label>
+                                            <Input
+                                                id="add_product_video_url"
+                                                type="url" placeholder="https://youtube.com/watch?v=..."
+                                                value={data.add_product_video_url}
+                                                onChange={(e) => setData('add_product_video_url', e.target.value)}
+                                                className={errors.add_product_video_url ? 'border-red-500' : ''}
+                                            />
+                                            {errors.add_product_video_url && <p className="text-sm text-red-500">{errors.add_product_video_url}</p>}
                                         </div>
                                     </div>
                                 </div>

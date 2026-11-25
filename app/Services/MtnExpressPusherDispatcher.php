@@ -25,6 +25,7 @@ class MtnExpressPusherDispatcher
             ['setting' => 'jesco_mtn_express_order_pusher_enabled', 'class' => JescoMtnExpressOrderPusherService::class],
             ['setting' => 'skanka5_mtn_express_order_pusher_enabled', 'class' => Skanka5MtnExpressOrderPusherService::class],
             ['setting' => 'masternetgh_mtn_express_order_pusher_enabled', 'class' => MasterNetGhMtnExpressOrderPusherService::class],
+            ['setting' => 'dataflow_mtn_express_order_pusher_enabled', 'class' => DataflowMtnExpressOrderPusherService::class],
         ];
 
         foreach ($providers as $provider) {

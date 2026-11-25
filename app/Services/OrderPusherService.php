@@ -8,14 +8,20 @@ use Illuminate\Support\Facades\Log;
 
 class OrderPusherService
 {
-    private $baseUrl = 'https://agent.jaybartservices.com/api/v1';
-    private $apiKey = '';
-
     public function pushOrderToApi(Order $order)
     {
+        $baseUrl = config('app.order_pusher_base_url');
+        $apiKey = config('app.order_pusher_api_key');
+
         Log::info('Processing order for API push', ['order_id' => $order->id]);
         
-        $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
+        $items = $order->products()->withPivot(
+            'id',
+            'quantity',
+            'price',
+            'beneficiary_number',
+            'product_variant_id'
+        )->get();
         Log::info('Order has items', ['count' => $items->count()]);
         
         $processedItems = 0;
@@ -54,18 +60,30 @@ class OrderPusherService
             
             $processedItems++;
 
-            $endpoint = $this->baseUrl . '/buy-other-package';
             $payload = [
                 'recipient_msisdn' => $this->formatPhone($beneficiaryPhone),
                 'network_id' => $networkId,
-                'shared_bundle' => $sharedBundle
+                'shared_bundle' => $sharedBundle,
+                'ref' => "order-{$order->id}-item-{$item->pivot->id}",
             ];
             
+            if (!is_string($baseUrl) || trim($baseUrl) === '' || !is_string($apiKey) || $apiKey === '') {
+                $order->update(['order_pusher_status' => 'failed']);
+                Log::error('Order push skipped because API configuration is incomplete', [
+                    'order_id' => $order->id,
+                    'item_id' => $item->pivot->id,
+                    'base_url_configured' => is_string($baseUrl) && trim($baseUrl) !== '',
+                    'api_key_configured' => is_string($apiKey) && $apiKey !== '',
+                ]);
+                continue;
+            }
+
+            $endpoint = rtrim($baseUrl, '/') . '/buy-other-package';
             Log::info('Sending to API', ['endpoint' => $endpoint, 'payload' => $payload]);
 
             try {
                 $response = Http::withHeaders([
-                    'x-api-key' => $this->apiKey,
+                    'x-api-key' => $apiKey,
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json'
                 ])->timeout(30)->post($endpoint, $payload);

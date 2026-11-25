@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Log;
 
 class DataflowOrderPusherService
 {
+    protected bool $expressOnly = false;
+
     private $baseUrl;
     private $apiKey;
 
@@ -17,14 +19,28 @@ class DataflowOrderPusherService
         $this->apiKey = config('services.dataflow.api_key', '');
     }
 
-    public function pushOrderToApi(Order $order)
+    public function pushOrderToApi(Order $order): bool
     {
         Log::info('Processing order for Dataflow API push', ['order_id' => $order->id]);
 
+        if ($this->expressOnly && strtolower(trim($order->network)) !== 'mtn') {
+            Log::warning('Skipping non-MTN order for Dataflow MTN Express service', [
+                'order_id' => $order->id,
+                'network' => $order->network,
+            ]);
+
+            return false;
+        }
+
         $items = $order->products()->withPivot('quantity', 'price', 'beneficiary_number', 'product_variant_id')->get();
         $processedItems = 0;
+        $successfulItems = 0;
 
         foreach ($items as $item) {
+            if ($this->expressOnly && strcasecmp(trim($item->name), 'mtn express') !== 0) {
+                continue;
+            }
+
             $beneficiaryPhone = $item->pivot->beneficiary_number;
             $variant = \App\Models\ProductVariant::find($item->pivot->product_variant_id);
 
@@ -75,6 +91,7 @@ class DataflowOrderPusherService
                         ]);
 
                         $order->refresh();
+                        $successfulItems++;
 
                         Log::info('Dataflow order pushed successfully', [
                             'order_id' => $order->id,
@@ -107,6 +124,8 @@ class DataflowOrderPusherService
         if ($processedItems === 0) {
             Log::info('No items were processed for Dataflow order', ['order_id' => $order->id]);
         }
+
+        return $successfulItems > 0;
     }
 
     private function formatPhone($phone)

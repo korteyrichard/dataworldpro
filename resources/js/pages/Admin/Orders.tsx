@@ -182,6 +182,13 @@ export default function AdminOrders() {
     return map[network.toLowerCase()] || 'bg-gray-200 text-gray-700';
   };
 
+  const getOrderNetworkLabel = (order: Order) => {
+    const isMtnExpress = order.products.some(
+      product => product.name.trim().toLowerCase() === 'mtn express',
+    );
+    return isMtnExpress ? 'MTN Express' : order.network || '-';
+  };
+
   const getOrderPusherStatusColor = (status: 'disabled' | 'success' | 'failed' | null | undefined) => {
     const map: Record<string, string> = {
       disabled: 'bg-gray-100 text-gray-700',
@@ -364,6 +371,7 @@ export default function AdminOrders() {
               onChange={(e) => handleFilterChange('network', e.target.value)}
             >
               <option value="">--select network--</option>
+              <option value="MTN_EXPRESS">MTN Express</option>
               {networks.map(network => (
                 <option key={network} value={network}>{network}</option>
               ))}
@@ -542,7 +550,7 @@ export default function AdminOrders() {
                       </td>
                       <td className="px-3 sm:px-5 py-3 sm:py-4 whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</td>
                       <td className={`px-3 sm:px-5 py-3 sm:py-4 rounded ${getNetworkColor(order.network)} font-medium`}>
-                        {order.network || '-'}
+                        {getOrderNetworkLabel(order)}
                       </td>
                       <td className="px-3 sm:px-5 py-3 sm:py-4">
                         <select
