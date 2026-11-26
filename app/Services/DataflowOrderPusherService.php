@@ -47,7 +47,7 @@ class DataflowOrderPusherService
             $size = $variant && isset($variant->variant_attributes['size']) ? $variant->variant_attributes['size'] : null;
             $networkId = $this->getNetworkIdFromProduct($item->name);
 
-            if (empty($beneficiaryPhone) || !$networkId || !$size) {
+            if (empty($beneficiaryPhone) || (!$this->expressOnly && !$networkId) || !$size) {
                 Log::warning('Skipping item for Dataflow - missing data', [
                     'order_id' => $order->id,
                     'item_id' => $item->id,
@@ -58,12 +58,16 @@ class DataflowOrderPusherService
 
             $processedItems++;
 
-            $endpoint = $this->baseUrl . '/normal-orders';
+            $endpoint = $this->baseUrl . ($this->expressOnly ? '/express-orders' : '/normal-orders');
             $payload = [
                 'beneficiary_number' => $this->formatPhone($beneficiaryPhone),
-                'network_id' => $networkId,
                 'size' => strtoupper($size),
             ];
+            if ($this->expressOnly) {
+                $payload['network'] = 'MTN Express';
+            } else {
+                $payload['network_id'] = $networkId;
+            }
 
             Log::info('Sending to Dataflow API', ['endpoint' => $endpoint, 'payload' => $payload]);
 

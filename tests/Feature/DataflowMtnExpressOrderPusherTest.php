@@ -46,8 +46,8 @@ test('Dataflow MTN Express pusher sends MTN Express orders through the express d
 
     expect((new MtnExpressPusherDispatcher)->push($order))->toBeTrue();
 
-    Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/normal-orders')
-        && $request['network_id'] === 9
+    Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/express-orders')
+        && $request['network'] === 'MTN Express'
         && $request['size'] === '1GB');
     expect($order->fresh()->reference_id)->toBe('dataflow-express-123');
     expect($order->fresh()->order_pusher_status)->toBe('success');
